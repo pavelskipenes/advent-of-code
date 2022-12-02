@@ -1,4 +1,3 @@
-
 //!
 //!  # Day 2: Rock Paper Scissors
 //!  The Elves begin to set up camp on the beach. To decide whose tent gets to be closest to the snack storage, a giant Rock Paper Scissors tournament is already in progress.
@@ -318,7 +317,7 @@ mod tests {
         // prelude
         use super::*;
 
-        let string = include_str!("../puzzle_input/day_2/problem_1");
+        let string = include_str!("../puzzle_input/day_2.txt");
         let dec_method = DecryptionMethod::NextAction;
         let result = decrypt(string, &dec_method);
         assert_eq!(10595, result);
@@ -341,7 +340,7 @@ mod tests {
     #[test]
     fn test_problem_2() {
         use super::*;
-        let input = include_str!("../puzzle_input/day_2/problem_1");
+        let input = include_str!("../puzzle_input/day_2.txt");
 
         let decryption_method = DecryptionMethod::NextOutcome;
         let points = decrypt(input, &decryption_method);

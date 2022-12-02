@@ -1,4 +1,3 @@
-
 //! # Day 1: Calorie Counting
 //! ## Part 1
 //! Santa's reindeer typically eat regular reindeer food, but they need a lot of magical energy to deliver presents on Christmas. For that, their favorite snack is a special type of star fruit that only grows deep in the jungle. The Elves have brought you on their annual expedition to the grove where the fruit grows.
@@ -114,7 +113,7 @@ mod tests {
         // prelude
         use super::*;
 
-        let buffer = include_str!("../puzzle_input/day_1/problem_1");
+        let buffer = include_str!("../puzzle_input/day_1.txt");
 
         // run tests
         let result = elf_carrying_most_calories(buffer, 1);
