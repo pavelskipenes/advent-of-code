@@ -72,19 +72,47 @@ struct Rucksack<'a> {
     compartment2: &'a str,
 }
 
-struct Group<'a> {
-    elfes: [Rucksack<'a>; 3],
+impl<'a> Rucksack<'a> {
+    fn get_inventory(&self) -> Chain<Chars<'a>, Chars<'a>> {
+        let mut output = self.compartment1.chars().collect::<String>();
+        output.push_str(self.compartment2.chars().collect::<String>().as_str());
+
+        // maybe return this in stead?
+        // output
+        self.compartment1
+            .chars()
+            .chain(self.compartment2.chars())
+            .into_iter()
+
+        //output
+    }
+
+    fn from_str(line: &'a str) -> Self {
+        let first = &line[0..line.len() / 2];
+        let second = &line[line.len() / 2..];
+        Rucksack {
+            compartment1: first,
+            compartment2: second,
+        }
+    }
+
+    fn find_common_char(&self) -> char {
+        let mut common_character = None;
+
+        self.compartment2.chars().for_each(|character| {
+            if self.compartment1.contains(character) {
+                common_character = Some(character);
+            }
+        });
+        common_character.unwrap()
+    }
+    fn sum_priorities(&self) -> u32 {
+        get_priority(self.find_common_char())
+    }
 }
 
-fn get_common_chars(hash_set: HashSet<char>, string1: &str, string2: &str) -> HashSet<char> {
-    let mut hash_set = hash_set;
-    for character in string1.chars() {
-        hash_set.remove(&character);
-    }
-    for character in string2.chars() {
-        hash_set.remove(&character);
-    }
-    hash_set
+struct Group<'a> {
+    elfes: [Rucksack<'a>; 3],
 }
 
 impl<'a> Group<'a> {
@@ -138,6 +166,7 @@ fn create_groups(input: &str) -> Vec<Group> {
             None => usize::MAX,
         }
     }
+
     // trim and filter out empty lines
     let mut lines = input
         .lines()
@@ -156,45 +185,6 @@ fn create_groups(input: &str) -> Vec<Group> {
     }
 
     groups
-}
-
-impl<'a> Rucksack<'a> {
-    fn get_inventory(&self) -> Chain<Chars<'a>, Chars<'a>> {
-        let mut output = self.compartment1.chars().collect::<String>();
-        output.push_str(self.compartment2.chars().collect::<String>().as_str());
-
-        // maybe return this in stead?
-        // output
-        self.compartment1
-            .chars()
-            .chain(self.compartment2.chars())
-            .into_iter()
-
-        //output
-    }
-
-    fn from_str(line: &'a str) -> Self {
-        let first = &line[0..line.len() / 2];
-        let second = &line[line.len() / 2..];
-        Rucksack {
-            compartment1: first,
-            compartment2: second,
-        }
-    }
-
-    fn find_common_char(&self) -> char {
-        let mut common_character = None;
-
-        self.compartment2.chars().for_each(|character| {
-            if self.compartment1.contains(character) {
-                common_character = Some(character);
-            }
-        });
-        common_character.unwrap()
-    }
-    fn sum_priorities(&self) -> u32 {
-        get_priority(self.find_common_char())
-    }
 }
 
 fn get_priority(character: char) -> u32 {
@@ -227,38 +217,36 @@ mod tests {
     }
 
     #[test]
-    fn test_types() {
+    fn test_priority() {
         assert_eq!(get_priority('p'), 16);
         assert_eq!(get_priority('L'), 38);
         assert_eq!(get_priority('P'), 42);
         assert_eq!(get_priority('v'), 22);
         assert_eq!(get_priority('t'), 20);
         assert_eq!(get_priority('s'), 19);
+    }
+    #[test]
+    fn test_common_char() {
+        const INPUT: &str = r"
+        vJrwpWtwJgWrhcsFMMfFFhFp
+        jqHRNqRjqzjGDLGLrsFMfFZSrLrFZsSL
+        PmmdzqPrVvPwwTWBwg
+        wMqvLMZHhHMvwLHjbvcjnnSBnvTQFn
+        ttgJtRGJQctTZtZT
+        CrZsJsPPZsGzwwsLwLmpwMDw";
 
-        assert_eq!(
-            Rucksack::from_str("vJrwpWtwJgWrhcsFMMfFFhFp").find_common_char(),
-            'p'
-        );
-        assert_eq!(
-            Rucksack::from_str("jqHRNqRjqzjGDLGLrsFMfFZSrLrFZsSL").find_common_char(),
-            'L'
-        );
-        assert_eq!(
-            Rucksack::from_str("PmmdzqPrVvPwwTWBwg").find_common_char(),
-            'P'
-        );
-        assert_eq!(
-            Rucksack::from_str("wMqvLMZHhHMvwLHjbvcjnnSBnvTQFn").find_common_char(),
-            'v'
-        );
-        assert_eq!(
-            Rucksack::from_str("ttgJtRGJQctTZtZT").find_common_char(),
-            't'
-        );
-        assert_eq!(
-            Rucksack::from_str("CrZsJsPPZsGzwwsLwLmpwMDw").find_common_char(),
-            's'
-        );
+        let lines: Vec<&str> = INPUT
+            .lines()
+            .map(str::trim)
+            .skip_while(|&line| str::is_empty(line))
+            .collect();
+
+        assert_eq!(Rucksack::from_str(lines[0]).find_common_char(), 'p');
+        assert_eq!(Rucksack::from_str(lines[1]).find_common_char(), 'L');
+        assert_eq!(Rucksack::from_str(lines[2]).find_common_char(), 'P');
+        assert_eq!(Rucksack::from_str(lines[3]).find_common_char(), 'v');
+        assert_eq!(Rucksack::from_str(lines[4]).find_common_char(), 't');
+        assert_eq!(Rucksack::from_str(lines[5]).find_common_char(), 's');
     }
 
     #[test]
@@ -274,7 +262,6 @@ mod tests {
     }
 
     #[test]
-
     fn test_problem_1() {
         let input = get_input();
         assert_eq!(sum_priorities(input), 8515);
