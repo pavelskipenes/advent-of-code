@@ -60,16 +60,20 @@
 //!
 //!
 
-use std::{collections::HashSet, ops::Index};
+use std::{
+    collections::{HashMap, HashSet},
+    iter::Chain,
+    str::Chars,
+};
 
 #[derive(Debug, Clone)]
-struct Rucksack {
-    compartment1: Vec<char>,
-    compartment2: Vec<char>,
+struct Rucksack<'a> {
+    compartment1: &'a str,
+    compartment2: &'a str,
 }
 
-struct Group {
-    elfes: [Rucksack; 3],
+struct Group<'a> {
+    elfes: [Rucksack<'a>; 3],
 }
 
 fn get_common_chars(hash_set: HashSet<char>, string1: &str, string2: &str) -> HashSet<char> {
@@ -83,27 +87,34 @@ fn get_common_chars(hash_set: HashSet<char>, string1: &str, string2: &str) -> Ha
     hash_set
 }
 
-impl Group {
-    fn from_str(rucksacks: [&str; 3]) -> Self {
+impl<'a> Group<'a> {
+    fn from_str(rucksacks: [&'a str; 3]) -> Self {
         Group {
             elfes: rucksacks.map(Rucksack::from_str),
         }
     }
 
     fn find_common_char(&self) -> char {
-        let result = self.elfes.clone().map(|elf| elf.get_inventory());
+        let rucksacks = self
+            .elfes
+            .clone()
+            .map(|elf| elf.get_inventory())
+            .map(|characters| characters.clone().collect::<HashSet<_>>());
 
-        let chars_0: HashSet<_> = result[0].chars().collect::<HashSet<_>>();
-        let chars_1: HashSet<_> = result[1].chars().collect::<HashSet<_>>();
-        let chars_2: HashSet<_> = result[2].chars().collect::<HashSet<_>>();
+        // count occurrence of characters
+        let mut occurrences: HashMap<char, usize> = Default::default();
 
-        let a = chars_0.intersection(&chars_1).collect::<HashSet<_>>();
-        let b = chars_1.intersection(&chars_2).collect::<HashSet<_>>();
+        rucksacks.iter().flatten().for_each(|character| {
+            let value = occurrences.get(character).unwrap_or(&0) + 1;
+            occurrences.insert(*character, value);
+        });
 
-        let intersection = a.intersection(&b);
-
-        let result = intersection.collect::<Vec<_>>();
-        ***result.index(0)
+        for (character, count) in occurrences {
+            if count == 3 {
+                return character;
+            }
+        }
+        !unreachable!();
     }
 
     fn sum_priorities(&self) -> u32 {
@@ -147,23 +158,24 @@ fn create_groups(input: &str) -> Vec<Group> {
     groups
 }
 
-impl Rucksack {
-    fn get_inventory(&self) -> String {
-        let mut output = self.compartment1.iter().clone().collect::<String>();
-        output.push_str(
-            self.compartment2
-                .iter()
-                .clone()
-                .collect::<String>()
-                .as_str(),
-        );
+impl<'a> Rucksack<'a> {
+    fn get_inventory(&self) -> Chain<Chars<'a>, Chars<'a>> {
+        let mut output = self.compartment1.chars().collect::<String>();
+        output.push_str(self.compartment2.chars().collect::<String>().as_str());
 
-        output
+        // maybe return this in stead?
+        // output
+        self.compartment1
+            .chars()
+            .chain(self.compartment2.chars())
+            .into_iter()
+
+        //output
     }
 
-    fn from_str(line: &str) -> Self {
-        let first: Vec<char> = line[0..line.len() / 2].chars().collect();
-        let second: Vec<char> = line[line.len() / 2..].chars().collect();
+    fn from_str(line: &'a str) -> Self {
+        let first = &line[0..line.len() / 2];
+        let second = &line[line.len() / 2..];
         Rucksack {
             compartment1: first,
             compartment2: second,
@@ -173,12 +185,12 @@ impl Rucksack {
     fn find_common_char(&self) -> char {
         let mut common_character = None;
 
-        for character in &self.compartment2 {
+        self.compartment2.chars().for_each(|character| {
             if self.compartment1.contains(character) {
                 common_character = Some(character);
             }
-        }
-        *common_character.unwrap()
+        });
+        common_character.unwrap()
     }
     fn sum_priorities(&self) -> u32 {
         get_priority(self.find_common_char())
@@ -196,7 +208,7 @@ fn get_priority(character: char) -> u32 {
 
 fn sum_priorities(input: &str) -> u32 {
     input
-        .split('\n')
+        .lines()
         .map(str::trim)
         .skip_while(|line| line.is_empty())
         .map(|line| {
