@@ -33,10 +33,10 @@
 //!
 //! Following the Elf's instructions for the second column, what would your total score be if everything goes exactly according to your strategy guide?
 
-pub enum RoundOutcome {
-    Loss = 0,
-    Draw = 3,
-    Victory = 6,
+#[derive(Debug)]
+pub enum Error {
+    CannotCreateShape,
+    CannotCreateRoundOutcome,
 }
 
 pub enum DecryptionMethod {
@@ -44,57 +44,27 @@ pub enum DecryptionMethod {
     NextOutcome,
 }
 
-impl TryFrom<char> for RoundOutcome {
-    type Error = Error;
-
-    fn try_from(value: char) -> Result<Self, Self::Error> {
-        match value.to_ascii_uppercase() {
-            'X' => Ok(Self::Loss),
-            'Y' => Ok(Self::Draw),
-            'Z' => Ok(Self::Victory),
-            _ => Err(Error::CannotCreateRoundOutcome),
-        }
-    }
-}
-
-impl Into<i32> for RoundOutcome {
-    fn into(self) -> i32 {
-        match self {
-            Self::Loss => 0,
-            Self::Draw => 3,
-            Self::Victory => 6,
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum Error {
-    CannotCreateAction,
-    CannotCreateRoundOutcome,
-}
-
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub enum Action {
+pub enum Shape {
     Rock = 1,
     Paper = 2,
     Scissors = 3,
 }
 
-impl TryFrom<char> for Action {
+impl TryFrom<char> for Shape {
     type Error = Error;
 
     fn try_from(value: char) -> Result<Self, Self::Error> {
-        // X,Y,Z means next action
         match value.to_ascii_uppercase() {
             'A' | 'X' => Ok(Self::Rock),
             'B' | 'Y' => Ok(Self::Paper),
             'C' | 'Z' => Ok(Self::Scissors),
-            _ => Err(Error::CannotCreateAction),
+            _ => Err(Error::CannotCreateShape),
         }
     }
 }
 
-impl Action {
+impl Shape {
     #[must_use]
     pub fn battle(&self, me: &Self) -> RoundOutcome {
         use RoundOutcome as RO;
@@ -119,54 +89,96 @@ impl Action {
     }
 
     #[must_use]
-    pub fn get_next_move(&self, wanted_outcome: &RoundOutcome) -> Self {
+    pub fn get_shape(&self, wanted_outcome: &RoundOutcome) -> Self {
         use RoundOutcome as RO;
         let opponent = self;
         match wanted_outcome {
             RO::Draw => opponent.clone(),
             RO::Loss => match opponent {
-                Action::Rock => Action::Scissors,
-                Action::Paper => Action::Rock,
-                Action::Scissors => Action::Paper,
+                Shape::Rock => Shape::Scissors,
+                Shape::Paper => Shape::Rock,
+                Shape::Scissors => Shape::Paper,
             },
             RO::Victory => match opponent {
-                Action::Rock => Action::Paper,
-                Action::Paper => Action::Scissors,
-                Action::Scissors => Action::Rock,
+                Shape::Rock => Shape::Paper,
+                Shape::Paper => Shape::Scissors,
+                Shape::Scissors => Shape::Rock,
             },
         }
     }
 }
 
+pub enum RoundOutcome {
+    Loss = 0,
+    Draw = 3,
+    Victory = 6,
+}
+
+impl TryFrom<char> for RoundOutcome {
+    type Error = Error;
+
+    fn try_from(value: char) -> Result<Self, Self::Error> {
+        match value.to_ascii_uppercase() {
+            'X' => Ok(Self::Loss),
+            'Y' => Ok(Self::Draw),
+            'Z' => Ok(Self::Victory),
+            _ => Err(Error::CannotCreateRoundOutcome),
+        }
+    }
+}
+
+/// # Panics
+///
+/// Valid input is new line separated lines where each line contains two space separated character.
+/// First character can only be one of 'A', 'B' or 'C'
+/// Second character can only by one of 'X', 'Y' or 'Z'
+/// Empty lines are valid but will be ignored.
+/// lines will be trimmed so prepended and appended white space is valid and will be ignored.
+/// panics on invalid input
+///
 #[must_use]
 pub fn decrypt(input: &str, decryption_method: &DecryptionMethod) -> i32 {
-    let result =
-        input
-            .lines()
-            .skip_while(|val| val.trim() == "")
-            .fold((0, 0), |(p1, p2), string| {
-                let (out_1, out_2) = battle(match decryption_method {
-                    DecryptionMethod::NextAction => decrypt_line_next_action(string.trim()),
-                    DecryptionMethod::NextOutcome => decrypt_line_next_outcome(string.trim()),
-                });
+    let (_opponent_points, player_points) = input
+        .lines()
+        .map(str::trim)
+        .skip_while(|line| line.is_empty())
+        // calculate points for each round
+        .fold((0, 0), |(opponent_total, player_total), string| {
+            // points this round
+            let (opponent, player) = fight({
+                // extract first and last character
+                let (first_char, last_char) =
+                    match &string.chars().collect::<Vec<char>>() as &[char] {
+                        [first_char, ' ', last_char] => (*first_char, *last_char),
+                        trash => {
+                            panic!(
+                                "expected two space separated characters, received {:#?}",
+                                trash
+                            )
+                        }
+                    };
 
-                (p1 + out_1, p2 + out_2)
+                // convert character into Shapes
+                let opponent = Shape::try_from(first_char).unwrap();
+                let player = match decryption_method {
+                    DecryptionMethod::NextAction => Shape::try_from(last_char).unwrap(),
+                    DecryptionMethod::NextOutcome => {
+                        let wanted_outcome = RoundOutcome::try_from(last_char).unwrap();
+                        opponent.get_shape(&wanted_outcome)
+                    }
+                };
+
+                // use shapes and calculate outcome
+                (opponent, player)
             });
-    result.1
-}
 
-fn decrypt_line_next_action(line: &str) -> (Action, Action) {
-    let mut split = line.split(' ');
-    let p1 = split.next().unwrap().chars().next().unwrap();
-    let p2 = split.next().unwrap().chars().next().unwrap();
-    let p1 = Action::try_from(p1).unwrap();
-    let p2 = Action::try_from(p2).unwrap();
-
-    (p1, p2)
+            (opponent_total + opponent, player_total + player)
+        });
+    player_points
 }
 
 #[must_use]
-pub fn battle((p1, p2): (Action, Action)) -> (i32, i32) {
+pub fn fight((p1, p2): (Shape, Shape)) -> (i32, i32) {
     use RoundOutcome as RO;
     // add outcome points
     let (points1, points2) = match p1.battle(&p2) {
@@ -178,21 +190,6 @@ pub fn battle((p1, p2): (Action, Action)) -> (i32, i32) {
     (points1 + p1 as i32, points2 + p2 as i32)
 }
 
-/// # Panics
-#[must_use]
-pub fn decrypt_line_next_outcome(input: &str) -> (Action, Action) {
-    let mut split = input.split(' ');
-
-    let opponents_move = split.next().unwrap().chars().next().unwrap();
-    let wanted_outcome = split.next().unwrap().chars().next().unwrap();
-    let opponents_move = Action::try_from(opponents_move).unwrap();
-    let wanted_outcome = RoundOutcome::try_from(wanted_outcome).unwrap();
-
-    let next_move = opponents_move.get_next_move(&wanted_outcome);
-
-    (opponents_move, next_move)
-}
-
 #[cfg(test)]
 mod tests {
     // problem 1
@@ -201,54 +198,13 @@ mod tests {
         use super::RoundOutcome as RO;
         use super::*;
 
-        assert_eq!(Action::Rock as i32, 1);
-        assert_eq!(Action::Paper as i32, 2);
-        assert_eq!(Action::Scissors as i32, 3);
+        assert_eq!(Shape::Rock as i32, 1);
+        assert_eq!(Shape::Paper as i32, 2);
+        assert_eq!(Shape::Scissors as i32, 3);
 
         assert_eq!(RO::Loss as i32, 0);
         assert_eq!(RO::Draw as i32, 3);
         assert_eq!(RO::Victory as i32, 6);
-    }
-
-    #[test]
-    fn test_decryption_next_action() {
-        use super::*;
-        assert_eq!(
-            (Action::Rock, Action::Rock),
-            decrypt_line_next_action("A X")
-        );
-        assert_eq!(
-            (Action::Rock, Action::Paper),
-            decrypt_line_next_action("A Y")
-        );
-        assert_eq!(
-            (Action::Rock, Action::Scissors),
-            decrypt_line_next_action("A Z")
-        );
-        assert_eq!(
-            (Action::Paper, Action::Rock),
-            decrypt_line_next_action("B X")
-        );
-        assert_eq!(
-            (Action::Paper, Action::Paper),
-            decrypt_line_next_action("B Y")
-        );
-        assert_eq!(
-            (Action::Paper, Action::Scissors),
-            decrypt_line_next_action("B Z")
-        );
-        assert_eq!(
-            (Action::Scissors, Action::Rock),
-            decrypt_line_next_action("C X")
-        );
-        assert_eq!(
-            (Action::Scissors, Action::Paper),
-            decrypt_line_next_action("C Y")
-        );
-        assert_eq!(
-            (Action::Scissors, Action::Scissors),
-            decrypt_line_next_action("C Z")
-        );
     }
 
     #[test]
@@ -259,15 +215,15 @@ mod tests {
         let dec_method = DecryptionMethod::NextAction;
 
         assert_eq!(
-            Action::Rock as i32 + RO::Draw as i32,
+            Shape::Rock as i32 + RO::Draw as i32,
             decrypt("A X", &dec_method)
         );
         assert_eq!(
-            Action::Paper as i32 + RO::Draw as i32,
+            Shape::Paper as i32 + RO::Draw as i32,
             decrypt("B Y", &dec_method)
         );
         assert_eq!(
-            Action::Scissors as i32 + RO::Draw as i32,
+            Shape::Scissors as i32 + RO::Draw as i32,
             decrypt("C Z", &dec_method)
         );
     }
@@ -279,15 +235,15 @@ mod tests {
         let dec_method = DecryptionMethod::NextAction;
 
         assert_eq!(
-            Action::Paper as i32 + RO::Victory as i32,
+            Shape::Paper as i32 + RO::Victory as i32,
             decrypt("A Y", &dec_method)
         );
         assert_eq!(
-            Action::Scissors as i32 + RO::Victory as i32,
+            Shape::Scissors as i32 + RO::Victory as i32,
             decrypt("B Z", &dec_method)
         );
         assert_eq!(
-            Action::Rock as i32 + RO::Victory as i32,
+            Shape::Rock as i32 + RO::Victory as i32,
             decrypt("C X", &dec_method)
         );
     }
@@ -299,15 +255,15 @@ mod tests {
         let dec_method = DecryptionMethod::NextAction;
 
         assert_eq!(
-            Action::Scissors as i32 + RO::Loss as i32,
+            Shape::Scissors as i32 + RO::Loss as i32,
             decrypt("A Z", &dec_method)
         );
         assert_eq!(
-            Action::Rock as i32 + RO::Loss as i32,
+            Shape::Rock as i32 + RO::Loss as i32,
             decrypt("B X", &dec_method)
         );
         assert_eq!(
-            Action::Paper as i32 + RO::Loss as i32,
+            Shape::Paper as i32 + RO::Loss as i32,
             decrypt("C Y", &dec_method)
         );
     }
