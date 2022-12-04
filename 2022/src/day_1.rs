@@ -130,7 +130,7 @@ mod tests {
 
         const ANSWER: u64 = 24000;
         let output = super::elf_carrying_most_calories(INPUT, 1);
-        assert_eq!(output, ANSWER); // fails got 55000
+        assert_eq!(output, ANSWER);
     }
 
     #[test]
@@ -163,7 +163,7 @@ mod tests {
 
         const ANSWER: u64 = 45000;
         let output = super::elf_carrying_most_calories(INPUT, 3);
-        assert_eq!(output, ANSWER); // fails got 55000
+        assert_eq!(output, ANSWER);
     }
 
     #[test]
