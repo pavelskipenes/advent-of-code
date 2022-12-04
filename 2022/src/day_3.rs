@@ -70,13 +70,7 @@ pub struct Rucksack<'a> {
 impl<'a> Rucksack<'a> {
     fn get_inventory(&self) -> Vec<char> {
         let mut output = self.compartment1.chars().collect::<Vec<char>>();
-        self.compartment2
-            .chars()
-            .for_each(|character| output.push(character));
-
-        // maybe return this in stead?
-        // output
-        // self.compartment1.chars().chain(self.compartment2.chars())
+        output.extend(self.compartment2.chars());
 
         output
     }
