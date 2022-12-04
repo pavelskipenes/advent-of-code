@@ -67,7 +67,7 @@ use std::{
 };
 
 #[derive(Debug, Clone)]
-struct Rucksack<'a> {
+pub struct Rucksack<'a> {
     compartment1: &'a str,
     compartment2: &'a str,
 }
@@ -111,7 +111,7 @@ impl<'a> Rucksack<'a> {
     }
 }
 
-struct Group<'a> {
+pub struct Group<'a> {
     elfes: [Rucksack<'a>; 3],
 }
 
@@ -145,13 +145,13 @@ impl<'a> Group<'a> {
         !unreachable!();
     }
 
-    fn sum_priorities(&self) -> u32 {
+    pub fn sum_priorities(&self) -> u32 {
         let [g1, g2, g3] = self.elfes.clone().map(|elf| elf.sum_priorities());
         g1 + g2 + g3
     }
 }
 
-fn sum_groups(groups: Vec<Group>) -> u32 {
+pub fn sum_groups(groups: Vec<Group>) -> u32 {
     groups
         .iter()
         .map(Group::find_common_char)
@@ -159,7 +159,7 @@ fn sum_groups(groups: Vec<Group>) -> u32 {
         .sum()
 }
 
-fn create_groups(input: &str) -> Vec<Group> {
+pub fn create_groups(input: &str) -> Vec<Group> {
     fn remaining_iterations<T: Iterator>(lines: &T) -> usize {
         match lines.size_hint().1 {
             Some(remaining_items) => remaining_items,
@@ -187,7 +187,7 @@ fn create_groups(input: &str) -> Vec<Group> {
     groups
 }
 
-fn get_priority(character: char) -> u32 {
+pub fn get_priority(character: char) -> u32 {
     match character {
         'a'..='z' => character as u8 - b'a' + 1,
         'A'..='Z' => character as u8 - b'A' + 27,
@@ -196,11 +196,11 @@ fn get_priority(character: char) -> u32 {
     .into()
 }
 
-fn sum_priorities(input: &str) -> u32 {
+pub fn sum_priorities(input: &str) -> u32 {
     input
         .lines()
         .map(str::trim)
-        .skip_while(|line| line.is_empty())
+        .skip_while(|&line| line.is_empty())
         .map(|line| {
             let rucksack = Rucksack::from_str(line);
             get_priority(rucksack.find_common_char())
@@ -234,6 +234,7 @@ mod tests {
         wMqvLMZHhHMvwLHjbvcjnnSBnvTQFn
         ttgJtRGJQctTZtZT
         CrZsJsPPZsGzwwsLwLmpwMDw";
+        const ANSWERS: [char; 6] = ['p', 'L', 'P', 'v', 't', 's'];
 
         let lines: Vec<&str> = INPUT
             .lines()
@@ -241,12 +242,9 @@ mod tests {
             .skip_while(|&line| str::is_empty(line))
             .collect();
 
-        assert_eq!(Rucksack::from_str(lines[0]).find_common_char(), 'p');
-        assert_eq!(Rucksack::from_str(lines[1]).find_common_char(), 'L');
-        assert_eq!(Rucksack::from_str(lines[2]).find_common_char(), 'P');
-        assert_eq!(Rucksack::from_str(lines[3]).find_common_char(), 'v');
-        assert_eq!(Rucksack::from_str(lines[4]).find_common_char(), 't');
-        assert_eq!(Rucksack::from_str(lines[5]).find_common_char(), 's');
+        for i in 0..6 {
+            assert_eq!(Rucksack::from_str(lines[i]).find_common_char(), ANSWERS[i]);
+        }
     }
 
     #[test]
