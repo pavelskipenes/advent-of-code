@@ -1,0 +1,128 @@
+use std::{num::ParseIntError, ops::RangeInclusive};
+
+/// # Panics
+/// if input contains non parsable integers between '-' and ','
+#[must_use]
+pub fn get_ranges(input: &str) -> Vec<(RangeInclusive<u32>, RangeInclusive<u32>)> {
+    let output = input
+        // group pairs
+        .lines()
+        .skip_while(|&line| line.is_empty())
+        .map(str::trim)
+        .flat_map(|group_pair| {
+            group_pair
+                .split(',')
+                .flat_map(|group| group.split('-'))
+                .skip_while(|&cleaning_section| cleaning_section.is_empty())
+                .map(|cleaning_section| match cleaning_section.parse::<u32>() {
+                    Ok(section_number) => section_number,
+                    Err(why) => panic!("{}", why),
+                })
+                .collect::<Vec<u32>>()
+        })
+        .collect::<Vec<u32>>();
+
+    let mut ranges = vec![];
+    for el in output.chunks(4) {
+        ranges.push((el[0]..=el[1], el[2]..=el[3]));
+    }
+    ranges
+}
+
+#[must_use]
+pub fn ranges_overlap(ranges: &(RangeInclusive<u32>, RangeInclusive<u32>)) -> bool {
+    fn smaller(ranges: &(RangeInclusive<u32>, RangeInclusive<u32>)) -> &RangeInclusive<u32> {
+        let diff0 = ranges.0.end() - ranges.0.start();
+        let diff1 = ranges.1.end() - ranges.1.start();
+
+        if diff0 < diff1 {
+            &ranges.0
+        } else {
+            &ranges.1
+        }
+    }
+    fn larger(ranges: &(RangeInclusive<u32>, RangeInclusive<u32>)) -> &RangeInclusive<u32> {
+        let diff0 = ranges.0.end() - ranges.0.start();
+        let diff1 = ranges.1.end() - ranges.1.start();
+
+        if diff0 >= diff1 {
+            &ranges.0
+        } else {
+            &ranges.1
+        }
+    }
+
+    let inner = smaller(ranges);
+    let container = larger(ranges);
+
+    return container.start() <= inner.start() && container.end() >= inner.end();
+}
+
+#[must_use]
+pub fn count_num_ranges_with_overlap(ranges: &[(RangeInclusive<u32>, RangeInclusive<u32>)]) -> u32 {
+    let output = ranges.iter().fold(
+        0,
+        |acc, ranges| if ranges_overlap(ranges) { acc + 1 } else { acc },
+    );
+    output
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn get_input() -> &'static str {
+        include_str!("../puzzle_input/day_4.txt")
+    }
+
+    #[test]
+    fn test_example_1() {
+        const INPUT: &str = r"
+        2-4,6-8
+        2-3,4-5
+        5-7,7-9
+        2-8,3-7
+        6-6,4-6
+        2-6,4-8
+        ";
+        const ANSWER1: u32 = 2;
+        let ranges = get_ranges(INPUT);
+        let output = count_num_ranges_with_overlap(&ranges);
+        assert_eq!(output, ANSWER1);
+    }
+
+    #[test]
+    fn test_problem_1() {
+        let input = get_input();
+
+        let ranges = get_ranges(input);
+        let output = count_num_ranges_with_overlap(&ranges);
+        assert_eq!(output, 526);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_example_2() {
+        const INPUT: &str = r"
+        2-4,6-8
+        2-3,4-5
+        5-7,7-9
+        2-8,3-7
+        6-6,4-6
+        2-6,4-8
+        ";
+        assert!(false);
+        // const ANSWER1: u32 = u32::MAX;
+        // assert_eq!(process_1(INPUT), ANSWER1);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_problem_2() {
+        let input = get_input();
+
+        assert!(false);
+        // const ANSWER: u32 = u32::MAX;
+        // assert_eq!(process_2(input), ANSWER2);
+    }
+}
