@@ -1,4 +1,4 @@
-use std::{num::ParseIntError, ops::RangeInclusive};
+use std::ops::RangeInclusive;
 
 /// # Panics
 /// if input contains non parsable integers between '-' and ','
@@ -30,7 +30,7 @@ pub fn get_ranges(input: &str) -> Vec<(RangeInclusive<u32>, RangeInclusive<u32>)
 }
 
 #[must_use]
-pub fn ranges_overlap(ranges: &(RangeInclusive<u32>, RangeInclusive<u32>)) -> bool {
+pub fn ranges_full_overlap(ranges: &(RangeInclusive<u32>, RangeInclusive<u32>)) -> bool {
     fn smaller(ranges: &(RangeInclusive<u32>, RangeInclusive<u32>)) -> &RangeInclusive<u32> {
         let diff0 = ranges.0.end() - ranges.0.start();
         let diff1 = ranges.1.end() - ranges.1.start();
@@ -59,11 +59,42 @@ pub fn ranges_overlap(ranges: &(RangeInclusive<u32>, RangeInclusive<u32>)) -> bo
 }
 
 #[must_use]
-pub fn count_num_ranges_with_overlap(ranges: &[(RangeInclusive<u32>, RangeInclusive<u32>)]) -> u32 {
-    let output = ranges.iter().fold(
-        0,
-        |acc, ranges| if ranges_overlap(ranges) { acc + 1 } else { acc },
-    );
+pub fn ranges_partial_overlap(ranges: &(RangeInclusive<u32>, RangeInclusive<u32>)) -> bool {
+    if ranges.1.contains(ranges.0.start()) || ranges.1.contains(ranges.0.end()) {
+        // range 0's edges is inside range 1
+        return true;
+    }
+    if ranges.0.contains(ranges.1.start()) || ranges.0.contains(ranges.1.end()) {
+        // range 1's edges is inside range 0
+        return true;
+    }
+    false
+}
+
+#[must_use]
+pub fn count_num_ranges_with_full_overlap(
+    ranges: &[(RangeInclusive<u32>, RangeInclusive<u32>)],
+) -> u32 {
+    let output = ranges.iter().fold(0, |acc, ranges| {
+        if ranges_full_overlap(ranges) {
+            acc + 1
+        } else {
+            acc
+        }
+    });
+    output
+}
+#[must_use]
+pub fn count_num_ranges_with_partial_overlap(
+    ranges: &[(RangeInclusive<u32>, RangeInclusive<u32>)],
+) -> u32 {
+    let output = ranges.iter().fold(0, |acc, ranges| {
+        if ranges_partial_overlap(ranges) {
+            acc + 1
+        } else {
+            acc
+        }
+    });
     output
 }
 
@@ -87,7 +118,7 @@ mod tests {
         ";
         const ANSWER1: u32 = 2;
         let ranges = get_ranges(INPUT);
-        let output = count_num_ranges_with_overlap(&ranges);
+        let output = count_num_ranges_with_full_overlap(&ranges);
         assert_eq!(output, ANSWER1);
     }
 
@@ -96,12 +127,11 @@ mod tests {
         let input = get_input();
 
         let ranges = get_ranges(input);
-        let output = count_num_ranges_with_overlap(&ranges);
+        let output = count_num_ranges_with_full_overlap(&ranges);
         assert_eq!(output, 526);
     }
 
     #[test]
-    #[ignore]
     fn test_example_2() {
         const INPUT: &str = r"
         2-4,6-8
@@ -111,18 +141,18 @@ mod tests {
         6-6,4-6
         2-6,4-8
         ";
-        assert!(false);
-        // const ANSWER1: u32 = u32::MAX;
-        // assert_eq!(process_1(INPUT), ANSWER1);
+        const ANSWER1: u32 = 4;
+        let ranges = get_ranges(INPUT);
+        let output = count_num_ranges_with_partial_overlap(&ranges);
+        assert_eq!(output, ANSWER1);
     }
 
     #[test]
-    #[ignore]
     fn test_problem_2() {
         let input = get_input();
 
-        assert!(false);
-        // const ANSWER: u32 = u32::MAX;
-        // assert_eq!(process_2(input), ANSWER2);
+        let ranges = get_ranges(input);
+        let output = count_num_ranges_with_partial_overlap(&ranges);
+        assert_eq!(output, 886);
     }
 }
