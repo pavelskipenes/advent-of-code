@@ -30,7 +30,7 @@
 //!
 //! 10000";
 //!
-//! const ANSWER: &str = "24000";
+//! const ANSWER: u64 = 24000;
 //!
 //! let result = elf_carrying_most_calories(INPUT, 1);
 //! assert_eq!(result, ANSWER);
@@ -73,7 +73,7 @@
 //!
 //! 10000";
 //!
-//! const ANSWER: &str = "45000";
+//! const ANSWER: u64 = 45000;
 //!
 //! let result = elf_carrying_most_calories(INPUT, 3);
 //! assert_eq!(result, ANSWER);
@@ -83,14 +83,15 @@
 /// Returns number of calories `top` elfes are carrying as string. Elfes separate their own
 /// inventory in `inventory_all` from each other (if any) with double new line feed `\n\n`
 /// and they separate calories for each of their products by a single new line feed `\n`.
-pub fn elf_carrying_most_calories(inventory_all: &str, top: usize) -> String {
+pub fn elf_carrying_most_calories(inventory_all: &str, top: usize) -> u64 {
     let mut calories_carried_per_elfs = inventory_all
         .split("\n\n")
         .map(|inventory_one| -> u64 {
             let calories: Vec<u64> = inventory_one
                 .lines()
-                .skip_while(|line| line.trim() == "")
-                .map(|line| -> u64 { line.trim().parse::<u64>().unwrap_or(0) })
+                .map(str::trim)
+                .skip_while(|&line| line.is_empty())
+                .map(|line| -> u64 { line.parse::<u64>().unwrap_or(0) })
                 .collect();
             calories.iter().sum::<u64>()
         })
@@ -99,26 +100,79 @@ pub fn elf_carrying_most_calories(inventory_all: &str, top: usize) -> String {
     calories_carried_per_elfs.sort_unstable();
     calories_carried_per_elfs.reverse();
 
-    calories_carried_per_elfs
-        .iter()
-        .take(top)
-        .sum::<u64>()
-        .to_string()
+    calories_carried_per_elfs.iter().take(top).sum::<u64>()
 }
 
 #[cfg(test)]
 mod tests {
+
+    fn get_input() -> &'static str {
+        include_str!("../puzzle_input/day_1.txt")
+    }
+
     #[test]
-    fn test() {
-        // prelude
+    fn test_example_1() {
+        const INPUT: &str = r"
+        1000
+        2000
+        3000
+
+        4000
+
+        5000
+        6000
+
+        7000
+        8000
+        9000
+
+        10000";
+
+        const ANSWER: u64 = 24000;
+        let output = super::elf_carrying_most_calories(INPUT, 1);
+        assert_eq!(output, ANSWER); // fails got 55000
+    }
+
+    #[test]
+    fn test_problem_1() {
         use super::*;
 
-        let buffer = include_str!("../puzzle_input/day_1.txt");
+        let input = get_input();
 
-        // run tests
-        let result = elf_carrying_most_calories(buffer, 1);
-        assert_eq!(result, "69289");
-        let result = elf_carrying_most_calories(buffer, 3);
-        assert_eq!(result, "205615");
+        let result = elf_carrying_most_calories(input, 1);
+        assert_eq!(result, 69289);
+    }
+
+    #[test]
+    fn test_example_2() {
+        const INPUT: &str = r"
+        1000
+        2000
+        3000
+
+        4000
+
+        5000
+        6000
+
+        7000
+        8000
+        9000
+
+        10000";
+
+        const ANSWER: u64 = 45000;
+        let output = super::elf_carrying_most_calories(INPUT, 3);
+        assert_eq!(output, ANSWER); // fails got 55000
+    }
+
+    #[test]
+    fn test_problem_2() {
+        use super::*;
+
+        let input = get_input();
+        let output = elf_carrying_most_calories(input, 3);
+
+        assert_eq!(output, 205_615);
     }
 }
