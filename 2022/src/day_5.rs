@@ -12,6 +12,22 @@ const fn create_stacks() -> [Vec<char>; 9] {
     ]
 }
 
+fn transpose_and_reverse(matrix: Vec<Vec<Option<char>>>) -> Vec<Vec<char>> {
+    let mut transposed: Vec<Vec<char>> = vec![];
+    for col in 0..matrix[0].len() {
+        let mut transposed_row: Vec<char> = vec![];
+        for row in 0..matrix.len() {
+            if let Some(c) = matrix[row][col] {
+                transposed_row.push(c);
+            }
+        }
+        transposed.push(transposed_row);
+    }
+    transposed.iter_mut().for_each(|row| row.reverse());
+    transposed
+}
+
+#[derive(Debug, PartialEq, Eq)]
 pub struct Instruction {
     repetitions: u32,
     src: u8,
@@ -21,14 +37,18 @@ pub struct Instruction {
 mod parser {
     use nom::{
         branch::alt,
-        bytes::complete::tag,
+        bytes::complete::{is_not, tag, take_till},
         character::{
-            complete::{alpha1, anychar, char, digit1, not_line_ending},
+            complete::{alpha1, anychar, char, digit1, line_ending, newline, not_line_ending},
             streaming::space1,
         },
-        sequence::{delimited, tuple},
+        combinator::opt,
+        multi::{many0, many1, many_till},
+        sequence::{delimited, terminated, tuple},
         IResult,
     };
+
+    use crate::day_5::transpose_and_reverse;
 
     use super::Instruction;
 
@@ -58,6 +78,10 @@ mod parser {
         let mut output = vec![];
 
         while !line.is_empty() {
+            if line == " " {
+                break;
+            }
+
             // parse one cell
             let optional_character;
             (line, optional_character) = match crate_cell(line) {
@@ -77,18 +101,40 @@ mod parser {
         Ok((input, output))
     }
 
+    pub fn crate_init_rows(input: &str) -> (&str, Vec<Vec<char>>) {
+        fn until_wrapper<'a>(input: &'a str, characters: &'a str) -> IResult<&'a str, &'a str> {
+            is_not(characters)(input)
+        }
+
+        let (trash_and_instructions, creates_section) = until_wrapper(input, "1").unwrap();
+        // strip off number line
+        let mut matrix: Vec<Vec<Option<char>>> = vec![];
+        for line in creates_section.lines() {
+            let (_, row) = crate_line(line).unwrap();
+            if !row.is_empty() {
+                matrix.push(row);
+            }
+        }
+        let transposed = transpose_and_reverse(matrix);
+        // reverse order maybe?
+        (trash_and_instructions, transposed)
+    }
+
     pub fn instruction(input: &str) -> IResult<&str, Instruction> {
         fn move_string_parser(input: &str) -> IResult<&str, &str> {
             tag("move")(input)
         }
-        let (input, line) = not_line_ending(input)?;
 
-        // let fn_move_str = tag("move");
+        // will fail if there is a line ending tho
+        //let (input, line) = not_line_ending(input)?;
+
+        // todo: add spaces to tags below and remove space wild cards from instruction var
         let fn_from_str = tag("from");
         let fn_to_str = tag("to");
 
         // example "move 2 from 2 to 8";
-        let instruction = match tuple((
+        let (remaining, instruction) = match tuple((
+            opt(newline),
             move_string_parser,
             space1,
             digit1,
@@ -100,48 +146,67 @@ mod parser {
             fn_to_str,
             space1,
             digit1,
-        ))(line)
+            opt(newline),
+        ))(input)
         {
-            Ok((_remaining_line, (_, _, repetitions, _, _, _, src, _, _, _, dest))) => {
+            Ok((remaining, (_, _, _, repetitions, _, _, _, src, _, _, _, dest, _))) => {
                 // Yolo, what can go wrong 😅?
+
                 let repetitions = repetitions.parse::<u32>().unwrap();
                 let src = src.parse::<u8>().unwrap();
                 let dest = dest.parse::<u8>().unwrap();
 
-                Instruction {
-                    repetitions,
-                    src,
-                    dest,
-                }
+                (
+                    remaining,
+                    Instruction {
+                        repetitions,
+                        src,
+                        dest,
+                    },
+                )
             }
             Err(why) => panic!("{}", why),
         };
 
-        Ok((input, instruction))
+        Ok((remaining, instruction))
+    }
+
+    fn trow_away_trash(input: &str) -> IResult<&str, &str> {
+        fn get_crate_ids(input: &str) -> IResult<&str, &str> {
+            not_line_ending(input)
+        }
+        fn match_line_ending(input: &str) -> IResult<&str, &str> {
+            line_ending(input)
+        }
+
+        let (remainder, _) = get_crate_ids(input)?;
+        let (remainder, _) = line_ending(remainder)?;
+        let (remainder, matches) = line_ending(remainder)?;
+
+        Ok((remainder, matches))
     }
 
     #[cfg(test)]
     mod tests {
-        use crate::day_5::parser::{crate_cell, crate_line, instruction};
+        use crate::day_5::{
+            parser::{crate_cell, crate_line, instruction},
+            transpose_and_reverse, Instruction,
+        };
+
+        use super::{crate_init_rows, trow_away_trash};
 
         #[test]
         fn parse_one_crate_cell() {
             let input = "[Z]";
             let expected = Some('Z');
 
-            let output = match crate_cell(input) {
-                Ok((_remaining_input, optional_character)) => optional_character,
-                Err(why) => panic!("{}", why),
-            };
+            let (_remaning_string, output) = crate_cell(input).unwrap();
             assert_eq!(output, expected);
 
             let input = "   ";
             let expected = None;
 
-            let output = match crate_cell(input) {
-                Ok((_remaining_input, optional_character)) => optional_character,
-                Err(why) => panic!("{}", why),
-            };
+            let (_, output) = crate_cell(input).unwrap();
             assert_eq!(output, expected);
         }
 
@@ -223,17 +288,91 @@ mod parser {
         fn parse_instruction() {
             let input = "move 1 from 2 to 3";
 
-            let (remaining_input, output_instruction) = match instruction(input) {
-                Ok((remaining_input, generated_instruction)) => {
-                    (remaining_input, generated_instruction)
-                }
-                Err(why) => panic!("{}", why),
-            };
+            let (remaining_input, output_instruction) = instruction(input).unwrap();
 
             assert_eq!(output_instruction.repetitions, 1);
             assert_eq!(output_instruction.src, 2);
             assert_eq!(output_instruction.dest, 3);
             assert_eq!(remaining_input, "");
+        }
+
+        #[test]
+        fn test_transpose_and_reverse() {
+            let original_matrix = vec![
+                vec![None, Some('D'), None],
+                vec![Some('N'), Some('C'), None],
+                vec![Some('Z'), Some('M'), Some('P')],
+            ];
+
+            let expected_matrix = vec![vec!['Z', 'N'], vec!['M', 'C', 'D'], vec!['P']];
+
+            assert_eq!(expected_matrix, transpose_and_reverse(original_matrix));
+        }
+
+        #[test]
+        fn parse_crates() {
+            let input = r"    [D]    
+[N] [C]    
+[Z] [M] [P]
+ 1   2   3 
+
+move 1 from 2 to 1
+move 3 from 1 to 3
+move 2 from 2 to 1
+move 1 from 1 to 2";
+            let (_remainder, matrix) = crate_init_rows(input);
+            let expected_matrix = vec![vec!['Z', 'N'], vec!['M', 'C', 'D'], vec!['P']];
+            assert_eq!(expected_matrix, matrix);
+        }
+
+        #[test]
+        fn test_example_1() {
+            let input = r"    [D]    
+[N] [C]    
+[Z] [M] [P]
+ 1   2   3 
+
+move 1 from 2 to 1
+move 3 from 1 to 3
+move 2 from 2 to 1
+move 1 from 1 to 2";
+
+            let (remainder_and_trash, _matrix) = crate_init_rows(input);
+            let (mut remainder, _trash) = trow_away_trash(remainder_and_trash).unwrap();
+            let mut instructions = vec![];
+
+            while !remainder.is_empty() {
+                dbg!(&remainder);
+                dbg!(&instructions);
+                let (tmp_remainder, tmp_instruction) = instruction(remainder).unwrap();
+                instructions.push(tmp_instruction);
+                remainder = tmp_remainder;
+            }
+
+            let expected_instructions = vec![
+                Instruction {
+                    repetitions: 1,
+                    src: 2,
+                    dest: 1,
+                },
+                Instruction {
+                    repetitions: 3,
+                    src: 1,
+                    dest: 3,
+                },
+                Instruction {
+                    repetitions: 2,
+                    src: 2,
+                    dest: 1,
+                },
+                Instruction {
+                    repetitions: 1,
+                    src: 1,
+                    dest: 2,
+                },
+            ];
+
+            assert_eq!(expected_instructions, instructions);
         }
     }
 }
