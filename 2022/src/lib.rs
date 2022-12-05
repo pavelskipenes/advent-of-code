@@ -7,8 +7,8 @@
 #![deny(unknown_lints)]
 #![deny(future_incompatible)]
 #![deny(clippy::undocumented_unsafe_blocks)]
-#![deny(dead_code)]
-#![deny(unused)]
+//#![deny(dead_code)]
+// #![deny(unused)]
 
 pub mod day_1;
 pub mod day_2;

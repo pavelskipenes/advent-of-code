@@ -16,7 +16,8 @@ mod parser {
     use nom::{
         branch::alt,
         bytes::complete::tag,
-        character::complete::{alpha1, char, not_line_ending, space0},
+        character::complete::{alpha1, anychar, char, not_line_ending, space0},
+        error::Error,
         sequence::delimited,
         IResult,
     };
@@ -40,20 +41,27 @@ mod parser {
         Ok((input, result))
     }
 
+    /// Consumes one line from `input` and returns the remaining of input without parsed line
+    /// and a vec of chars
     pub fn crate_line(input: &str) -> IResult<&str, Vec<Option<char>>> {
-        let (mut input, mut line) = not_line_ending(input)?;
+        let (input, mut line) = not_line_ending(input)?;
         let mut output = vec![];
 
         while !line.is_empty() {
             // parse one cell
-            let (line2, optional_character) = match crate_cell(line) {
+            let optional_character;
+            (line, optional_character) = match crate_cell(line) {
                 Ok((input, optional_character)) => (input, optional_character),
                 Err(why) => panic!("{}", why),
             };
-            line = line2;
             output.push(optional_character);
-            // between each cell there is a space but not on the end
-            (input, _) = space0(input)?;
+
+            // consume one space if present
+            if !line.is_empty() {
+                let result = anychar(line)?;
+                let (trimmed_line, character) = result;
+                line = if character == ' ' { trimmed_line } else { line };
+            }
         }
 
         Ok((input, output))
@@ -85,7 +93,33 @@ mod parser {
         }
 
         #[test]
-        fn test_parse_once_crate_line() {
+        fn test_parse_one_crate_line_one_cell() {
+            // regular input
+            let input = "[A]";
+            let expected = vec![Some('A')];
+
+            let output = match crate_line(input) {
+                Ok((_remaining_input, vec_optional_chars)) => vec_optional_chars,
+                Err(why) => panic!("{}", why),
+            };
+            assert_eq!(output, expected);
+        }
+
+        #[test]
+        fn test_parse_one_crate_line_two_cells() {
+            // regular input
+            let input = "[A] [B]";
+            let expected = vec![Some('A'), Some('B')];
+
+            let output = match crate_line(input) {
+                Ok((_remaining_input, vec_optional_chars)) => vec_optional_chars,
+                Err(why) => panic!("{}", why),
+            };
+            assert_eq!(output, expected);
+        }
+
+        #[test]
+        fn test_parse_one_crate_line() {
             // regular input
             let input = "[A] [B] [C]";
             let expected = vec![Some('A'), Some('B'), Some('C')];
@@ -97,7 +131,7 @@ mod parser {
             assert_eq!(output, expected);
         }
         #[test]
-        fn test_parse_once_crate_line_space_end() {
+        fn test_parse_one_crate_line_space_end() {
             // space at the end
             let input = "[F] [U] [C] [K]    ";
             let expected = vec![Some('F'), Some('U'), Some('C'), Some('K'), None];
@@ -109,7 +143,7 @@ mod parser {
             assert_eq!(output, expected);
         }
         #[test]
-        fn test_parse_once_crate_line_space_front() {
+        fn test_parse_one_crate_line_space_front() {
             // space at front
             let input = "    [F] [U] [C] [K]";
             let expected = vec![None, Some('F'), Some('U'), Some('C'), Some('K')];
@@ -121,7 +155,7 @@ mod parser {
             assert_eq!(output, expected);
         }
         #[test]
-        fn test_parse_once_crate_line_space_front_and_back() {
+        fn test_parse_one_crate_line_space_front_and_back() {
             // space at front
             let input = "    [F] [U] [C] [K]    ";
             let expected = vec![None, Some('F'), Some('U'), Some('C'), Some('K'), None];
