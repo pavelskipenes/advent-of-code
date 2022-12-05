@@ -12,15 +12,25 @@ const fn create_stacks() -> [Vec<char>; 9] {
     ]
 }
 
+pub struct Instruction {
+    repetitions: u32,
+    src: u8,
+    dest: u8,
+}
+
 mod parser {
     use nom::{
         branch::alt,
         bytes::complete::tag,
-        character::complete::{alpha1, anychar, char, not_line_ending, space0},
-        error::Error,
-        sequence::delimited,
+        character::{
+            complete::{alpha1, anychar, char, digit1, not_line_ending},
+            streaming::space1,
+        },
+        sequence::{delimited, tuple},
         IResult,
     };
+
+    use super::Instruction;
 
     /// consume one cell (three spaces) from input
     pub fn crate_cell(input: &str) -> IResult<&str, Option<char>> {
@@ -67,12 +77,55 @@ mod parser {
         Ok((input, output))
     }
 
+    pub fn instruction(input: &str) -> IResult<&str, Instruction> {
+        fn move_string_parser(input: &str) -> IResult<&str, &str> {
+            tag("move")(input)
+        }
+        let (input, line) = not_line_ending(input)?;
+
+        // let fn_move_str = tag("move");
+        let fn_from_str = tag("from");
+        let fn_to_str = tag("to");
+
+        // example "move 2 from 2 to 8";
+        let instruction = match tuple((
+            move_string_parser,
+            space1,
+            digit1,
+            space1,
+            fn_from_str,
+            space1,
+            digit1,
+            space1,
+            fn_to_str,
+            space1,
+            digit1,
+        ))(line)
+        {
+            Ok((_remaining_line, (_, _, repetitions, _, _, _, src, _, _, _, dest))) => {
+                // Yolo, what can go wrong 😅?
+                let repetitions = repetitions.parse::<u32>().unwrap();
+                let src = src.parse::<u8>().unwrap();
+                let dest = dest.parse::<u8>().unwrap();
+
+                Instruction {
+                    repetitions,
+                    src,
+                    dest,
+                }
+            }
+            Err(why) => panic!("{}", why),
+        };
+
+        Ok((input, instruction))
+    }
+
     #[cfg(test)]
     mod tests {
-        use crate::day_5::parser::{crate_cell, crate_line};
+        use crate::day_5::parser::{crate_cell, crate_line, instruction};
 
         #[test]
-        fn test_parse_one_crate_cell() {
+        fn parse_one_crate_cell() {
             let input = "[Z]";
             let expected = Some('Z');
 
@@ -93,8 +146,7 @@ mod parser {
         }
 
         #[test]
-        fn test_parse_one_crate_line_one_cell() {
-            // regular input
+        fn parse_one_crate_line_one_cell() {
             let input = "[A]";
             let expected = vec![Some('A')];
 
@@ -106,8 +158,7 @@ mod parser {
         }
 
         #[test]
-        fn test_parse_one_crate_line_two_cells() {
-            // regular input
+        fn parse_one_crate_line_two_cells() {
             let input = "[A] [B]";
             let expected = vec![Some('A'), Some('B')];
 
@@ -119,19 +170,7 @@ mod parser {
         }
 
         #[test]
-        fn test_parse_one_crate_line() {
-            // regular input
-            let input = "[A] [B] [C]";
-            let expected = vec![Some('A'), Some('B'), Some('C')];
-
-            let output = match crate_line(input) {
-                Ok((_remaining_input, vec_optional_chars)) => vec_optional_chars,
-                Err(why) => panic!("{}", why),
-            };
-            assert_eq!(output, expected);
-        }
-        #[test]
-        fn test_parse_one_crate_line_space_end() {
+        fn parse_one_crate_line_space_end() {
             // space at the end
             let input = "[F] [U] [C] [K]    ";
             let expected = vec![Some('F'), Some('U'), Some('C'), Some('K'), None];
@@ -143,7 +182,7 @@ mod parser {
             assert_eq!(output, expected);
         }
         #[test]
-        fn test_parse_one_crate_line_space_front() {
+        fn parse_one_crate_line_space_front() {
             // space at front
             let input = "    [F] [U] [C] [K]";
             let expected = vec![None, Some('F'), Some('U'), Some('C'), Some('K')];
@@ -155,7 +194,7 @@ mod parser {
             assert_eq!(output, expected);
         }
         #[test]
-        fn test_parse_one_crate_line_space_front_and_back() {
+        fn parse_one_crate_line_space_front_and_back() {
             // space at front
             let input = "    [F] [U] [C] [K]    ";
             let expected = vec![None, Some('F'), Some('U'), Some('C'), Some('K'), None];
@@ -165,6 +204,36 @@ mod parser {
                 Err(why) => panic!("{}", why),
             };
             assert_eq!(output, expected);
+        }
+
+        #[test]
+        fn parse_one_crate_line_space_front_back_and_in_between() {
+            // space at front
+            let input = "    [F] [U]     [C] [K]    ";
+            let expected = vec![None, Some('F'), Some('U'), None, Some('C'), Some('K'), None];
+
+            let output = match crate_line(input) {
+                Ok((_remaining_input, vec_optional_chars)) => vec_optional_chars,
+                Err(why) => panic!("{}", why),
+            };
+            assert_eq!(output, expected);
+        }
+
+        #[test]
+        fn parse_instruction() {
+            let input = "move 1 from 2 to 3";
+
+            let (remaining_input, output_instruction) = match instruction(input) {
+                Ok((remaining_input, generated_instruction)) => {
+                    (remaining_input, generated_instruction)
+                }
+                Err(why) => panic!("{}", why),
+            };
+
+            assert_eq!(output_instruction.repetitions, 1);
+            assert_eq!(output_instruction.src, 2);
+            assert_eq!(output_instruction.dest, 3);
+            assert_eq!(remaining_input, "");
         }
     }
 }
