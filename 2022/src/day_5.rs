@@ -34,17 +34,46 @@ pub struct Instruction {
     dest: u8,
 }
 
+impl Instruction {
+    fn execute(&self, stacks: &mut Vec<Vec<char>>) {
+        for _ in 0..self.repetitions {
+            let tmp = stacks[self.src as usize - 1].pop().unwrap();
+            stacks[self.dest as usize - 1].push(tmp);
+        }
+    }
+
+    fn get_top_stack_as_string(stacks: &Vec<Vec<char>>) -> String {
+        let mut result = "".to_string();
+        for stack in stacks {
+            if let Some(character) = stack.last() {
+                result.push(*character);
+            };
+        }
+        result
+    }
+}
+
+pub fn run_problem_1(input: &str) -> String {
+    let (remaining_input, mut stacks) = parser::crate_init_rows(input);
+    let (remaining_input, _trash) = parser::throw_away_trash(remaining_input).unwrap();
+    let instructions = parser::instructions(remaining_input);
+
+    for instruction in instructions {
+        instruction.execute(&mut stacks);
+    }
+    Instruction::get_top_stack_as_string(&stacks)
+}
+
 mod parser {
     use nom::{
         branch::alt,
-        bytes::complete::{is_not, tag, take_till},
+        bytes::complete::{is_not, tag},
         character::{
             complete::{alpha1, anychar, char, digit1, line_ending, newline, not_line_ending},
             streaming::space1,
         },
         combinator::opt,
-        multi::{many0, many1, many_till},
-        sequence::{delimited, terminated, tuple},
+        sequence::{delimited, tuple},
         IResult,
     };
 
@@ -171,7 +200,7 @@ mod parser {
         Ok((remaining, instruction))
     }
 
-    fn trow_away_trash(input: &str) -> IResult<&str, &str> {
+    pub fn throw_away_trash(input: &str) -> IResult<&str, &str> {
         fn get_crate_ids(input: &str) -> IResult<&str, &str> {
             not_line_ending(input)
         }
@@ -186,14 +215,25 @@ mod parser {
         Ok((remainder, matches))
     }
 
+    pub fn instructions(input: &str) -> Vec<Instruction> {
+        let mut instructions = vec![];
+
+        let mut input = input;
+        while !input.is_empty() {
+            let (remaining_input, tmp_instruction) = instruction(input).unwrap();
+            instructions.push(tmp_instruction);
+            input = remaining_input;
+        }
+        instructions
+    }
+
     #[cfg(test)]
     mod tests {
+        use super::{crate_init_rows, throw_away_trash};
         use crate::day_5::{
             parser::{crate_cell, crate_line, instruction},
             transpose_and_reverse, Instruction,
         };
-
-        use super::{crate_init_rows, trow_away_trash};
 
         #[test]
         fn parse_one_crate_cell() {
@@ -326,7 +366,7 @@ move 1 from 1 to 2";
         }
 
         #[test]
-        fn test_example_1() {
+        fn test_instruction_parser() {
             let input = r"    [D]    
 [N] [C]    
 [Z] [M] [P]
@@ -338,7 +378,7 @@ move 2 from 2 to 1
 move 1 from 1 to 2";
 
             let (remainder_and_trash, _matrix) = crate_init_rows(input);
-            let (mut remainder, _trash) = trow_away_trash(remainder_and_trash).unwrap();
+            let (mut remainder, _trash) = throw_away_trash(remainder_and_trash).unwrap();
             let mut instructions = vec![];
 
             while !remainder.is_empty() {
@@ -399,29 +439,14 @@ move 1 from 1 to 2"
 
     #[test]
     fn test_parse_stack() {
-        // const INPUT: &str = get_example_input();
-        // let expected: [Vec<char>; 9] = [
-        //     vec!['Z', 'N'],
-        //     vec!['M', 'C', 'D'],
-        //     vec!['P'],
-        //     vec![],
-        //     vec![],
-        //     vec![],
-        //     vec![],
-        //     vec![],
-        //     vec![],
-        // ];
-        // let output = super::create_stacks();
-        // super::parse_stack(&mut output, INPUT);
-        // assert_eq!(expected, output);
+        const INPUT: &str = get_example_input();
     }
 
     #[test]
-    #[ignore]
     fn test_example_1() {
-        // const INPUT: &str = super::tests::get_example_input();
-        // const ANSWER: &str = "CMZ";
-        // assert_eq!(super::run(INPUT), ANSWER);
+        const INPUT: &str = super::tests::get_example_input();
+        const ANSWER: &str = "CMZ";
+        assert_eq!(super::run_problem_1(INPUT), ANSWER.to_string());
     }
 
     #[test]
