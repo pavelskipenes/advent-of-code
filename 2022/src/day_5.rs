@@ -421,6 +421,8 @@ move 1 from 1 to 2";
 mod tests {
     // use super::*;
 
+    use crate::day_5::run_problem_1;
+
     fn get_input() -> &'static str {
         include_str!("../puzzle_input/day_5.txt")
     }
@@ -450,11 +452,10 @@ move 1 from 1 to 2"
     }
 
     #[test]
-    #[ignore]
     fn test_problem_1() {
-        // let input = get_input();
-        // const ANSWER1: u32 = u32::MAX;
-        // assert_eq!(process_1(input), ANSWER1);
+        let input = get_input();
+        const ANSWER1: &str = "ZRLJGSCTR";
+        assert_eq!(run_problem_1(input), ANSWER1.to_string());
     }
 
     #[test]
