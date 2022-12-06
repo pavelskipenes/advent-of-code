@@ -79,13 +79,11 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_problem_1() {
         let input = get_input();
-
-        assert!(false);
-        // const ANSWER1: u32 = u32::MAX;
-        // assert_eq!(process_1(input), ANSWER1);
+        const ANSWER: &str = "rpbc";
+        const OFFSET: usize = 1702;
+        assert_eq!(run_problem_1(input), (ANSWER, OFFSET));
     }
     #[test]
     #[ignore]
