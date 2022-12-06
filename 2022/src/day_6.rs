@@ -1,3 +1,23 @@
+use std::collections::HashSet;
+
+fn run_problem_1(input: &'static str) -> (&'static str, usize) {
+    let mut offset = 0;
+    loop {
+        let view = &input[offset..offset + 4];
+        let mut set: HashSet<char> = HashSet::new();
+        for character in view.chars() {
+            set.insert(character);
+        }
+        dbg!(&input, &set, &input[offset..], &offset);
+        if set.len() == 4 {
+            set.clear();
+            break;
+        }
+        offset += 1;
+    }
+    (&input[offset..offset + 4], offset + 4)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -23,14 +43,39 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_example_1() {
-        const INPUT: &str = r"
-        
-        ";
-        assert!(false);
-        // const ANSWER1: u32 = u32::MAX;
-        // assert_eq!(process_1(INPUT), ANSWER1);
+        const INPUT: &str = get_example_input_1();
+        const ANSWER1: usize = 7;
+        const MARKER1: &str = "jpqm";
+        assert_eq!(run_problem_1(INPUT), (MARKER1, ANSWER1));
+    }
+    #[test]
+    fn test_example_2() {
+        const INPUT: &str = get_example_input_2();
+        const ANSWER2: usize = 5;
+        const MARKER2: &str = "vwbj";
+        assert_eq!(run_problem_1(INPUT), (MARKER2, ANSWER2));
+    }
+    #[test]
+    fn test_example_3() {
+        const INPUT: &str = get_example_input_3();
+        const ANSWER3: usize = 6;
+        const MARKER3: &str = "pdvj";
+        assert_eq!(run_problem_1(INPUT), (MARKER3, ANSWER3));
+    }
+    #[test]
+    fn test_example_4() {
+        const INPUT: &str = get_example_input_4();
+        const ANSWER4: usize = 10;
+        const MARKER4: &str = "rfnt";
+        assert_eq!(run_problem_1(INPUT), (MARKER4, ANSWER4));
+    }
+    #[test]
+    fn test_example_5() {
+        const INPUT: &str = get_example_input_5();
+        const ANSWER5: usize = 11;
+        const MARKER5: &str = "zqfr";
+        assert_eq!(run_problem_1(INPUT), (MARKER5, ANSWER5));
     }
 
     #[test]
@@ -42,18 +87,6 @@ mod tests {
         // const ANSWER1: u32 = u32::MAX;
         // assert_eq!(process_1(input), ANSWER1);
     }
-
-    #[test]
-    #[ignore]
-    fn test_example_2() {
-        const INPUT: &str = r"
-        
-        ";
-        assert!(false);
-        // const ANSWER1: u32 = u32::MAX;
-        // assert_eq!(process_1(INPUT), ANSWER1);
-    }
-
     #[test]
     #[ignore]
     fn test_problem_2() {
