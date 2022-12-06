@@ -18,7 +18,6 @@ fn find_distinct_chars(input: &'static str, count: usize) -> (&'static str, usiz
             set.insert(character);
         }
         if set.len() == count {
-            set.clear();
             break;
         }
         offset += 1;
