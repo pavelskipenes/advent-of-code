@@ -130,12 +130,11 @@ mod tests {
         assert_eq!(find_start_of_packet(input), (ANSWER, OFFSET));
     }
     #[test]
-    #[ignore]
     fn test_problem_2() {
         let input = get_input();
 
-        assert!(false);
-        // const ANSWER: u32 = u32::MAX;
-        // assert_eq!(process_2(input), ANSWER2);
+        const ANSWER: &str = "lnvbtqgjsdzmhc";
+        const OFFSET: usize = 3559;
+        assert_eq!(find_start_of_message(input), (ANSWER, OFFSET));
     }
 }
