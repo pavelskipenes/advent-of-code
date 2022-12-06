@@ -106,13 +106,12 @@ pub fn elf_carrying_most_calories(inventory_all: &str, top: usize) -> u64 {
 #[cfg(test)]
 mod tests {
 
-    fn get_input() -> &'static str {
+    const fn get_input() -> &'static str {
         include_str!("../puzzle_input/day_1.txt")
     }
 
-    #[test]
-    fn test_example_1() {
-        const INPUT: &str = r"
+    const fn get_example_input() -> &'static str {
+        r"
         1000
         2000
         3000
@@ -126,8 +125,12 @@ mod tests {
         8000
         9000
 
-        10000";
+        10000"
+    }
 
+    #[test]
+    fn test_example_1() {
+        const INPUT: &str = get_example_input();
         const ANSWER: u64 = 24000;
         let output = super::elf_carrying_most_calories(INPUT, 1);
         assert_eq!(output, ANSWER);
@@ -135,32 +138,15 @@ mod tests {
 
     #[test]
     fn test_problem_1() {
-        use super::*;
-
-        let input = get_input();
-
-        let result = elf_carrying_most_calories(input, 1);
-        assert_eq!(result, 69289);
+        const INPUT: &str = get_input();
+        const ANSWER: u64 = 69289;
+        let result = super::elf_carrying_most_calories(INPUT, 1);
+        assert_eq!(result, ANSWER);
     }
 
     #[test]
     fn test_example_2() {
-        const INPUT: &str = r"
-        1000
-        2000
-        3000
-
-        4000
-
-        5000
-        6000
-
-        7000
-        8000
-        9000
-
-        10000";
-
+        const INPUT: &str = get_example_input();
         const ANSWER: u64 = 45000;
         let output = super::elf_carrying_most_calories(INPUT, 3);
         assert_eq!(output, ANSWER);
@@ -168,11 +154,9 @@ mod tests {
 
     #[test]
     fn test_problem_2() {
-        use super::*;
-
-        let input = get_input();
-        let output = elf_carrying_most_calories(input, 3);
-
-        assert_eq!(output, 205_615);
+        const INPUT: &str = get_input();
+        const ANSWER: u64 = 205_615;
+        let output = super::elf_carrying_most_calories(INPUT, 3);
+        assert_eq!(output, ANSWER);
     }
 }

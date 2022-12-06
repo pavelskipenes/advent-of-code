@@ -1,26 +1,12 @@
-const fn create_stacks() -> [Vec<char>; 9] {
-    [
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    ]
-}
-
-fn transpose_and_reverse(matrix: Vec<Vec<Option<char>>>) -> Vec<Vec<char>> {
+fn transpose_and_reverse(matrix: &[Vec<Option<char>>]) -> Vec<Vec<char>> {
     let mut transposed: Vec<Vec<char>> = vec![];
     for col in 0..matrix[0].len() {
         let mut transposed_row: Vec<char> = vec![];
-        for row in 0..matrix.len() {
+        (0..matrix.len()).for_each(|row| {
             if let Some(c) = matrix[row][col] {
                 transposed_row.push(c);
             }
-        }
+        });
         transposed.push(transposed_row);
     }
     transposed.iter_mut().for_each(|row| row.reverse());
@@ -35,13 +21,13 @@ pub struct Instruction {
 }
 
 impl Instruction {
-    fn execute_one_at_a_time(&self, stacks: &mut Vec<Vec<char>>) {
+    fn execute_one_at_a_time(&self, stacks: &mut [Vec<char>]) {
         for _ in 0..self.repetitions {
             let tmp = stacks[self.src as usize - 1].pop().unwrap();
             stacks[self.dest as usize - 1].push(tmp);
         }
     }
-    fn execute_many_at_a_time(&self, stacks: &mut Vec<Vec<char>>) {
+    fn execute_many_at_a_time(&self, stacks: &mut [Vec<char>]) {
         let stack_size = stacks[self.src as usize - 1].len();
         let tmp = &stacks[self.src as usize - 1].split_off(stack_size - self.repetitions as usize);
 
@@ -61,6 +47,9 @@ impl Instruction {
     }
 }
 
+/// # Panics
+/// if input there is an issue with the format of the input
+#[must_use]
 pub fn run_problem_1(input: &str) -> String {
     let (remaining_input, mut stacks) = parser::crate_init_rows(input);
     let (remaining_input, _trash) = parser::throw_away_trash(remaining_input).unwrap();
@@ -72,6 +61,9 @@ pub fn run_problem_1(input: &str) -> String {
     Instruction::get_top_stack_as_string(&stacks)
 }
 
+/// # Panics
+/// if input there is an issue with the format of the input
+#[must_use]
 pub fn run_problem_2(input: &str) -> String {
     let (remaining_input, mut stacks) = parser::crate_init_rows(input);
     let (remaining_input, _trash) = parser::throw_away_trash(remaining_input).unwrap();
@@ -87,11 +79,11 @@ mod parser {
     use nom::{
         branch::alt,
         bytes::complete::{is_not, tag},
-        character::{
-            complete::{alpha1, anychar, char, digit1, line_ending, newline, not_line_ending},
-            streaming::space1,
+        character::complete::{
+            alpha1, anychar, char, digit1, line_ending, newline, not_line_ending,
         },
         combinator::opt,
+        error::Error,
         sequence::{delimited, tuple},
         IResult,
     };
@@ -102,13 +94,10 @@ mod parser {
 
     /// consume one cell (three spaces) from input
     pub fn crate_cell(input: &str) -> IResult<&str, Option<char>> {
-        let fn_crate_letter = delimited(char('['), alpha1, char(']'));
-        let fn_empty = tag("   ");
-        let mut fn_crate_cell = alt((fn_crate_letter, fn_empty));
+        let (remainder, consumed) =
+            alt((delimited(char('['), alpha1, char(']')), tag("   ")))(input)?;
 
-        let (input, result) = fn_crate_cell(input)?;
-
-        let result = match result {
+        let cell = match consumed {
             "   " => None,
             value => {
                 let character = value.chars().next().unwrap();
@@ -116,14 +105,16 @@ mod parser {
             }
         };
 
-        Ok((input, result))
+        Ok((remainder, cell))
     }
 
     /// Consumes one line from `input` and returns the remaining of input without parsed line
     /// and a vec of chars
-    pub fn crate_line(input: &str) -> IResult<&str, Vec<Option<char>>> {
-        let (input, mut line) = not_line_ending(input)?;
-        let mut output = vec![];
+    pub fn crate_line(input: &str) -> IResult<&str, Vec<Option<char>>, Error<&str>> {
+        let mut skewed_stack = vec![];
+
+        // get everything before a line ending
+        let (remainder, mut line) = not_line_ending(input)?;
 
         while !line.is_empty() {
             if line == " " {
@@ -131,12 +122,9 @@ mod parser {
             }
 
             // parse one cell
-            let optional_character;
-            (line, optional_character) = match crate_cell(line) {
-                Ok((input, optional_character)) => (input, optional_character),
-                Err(why) => panic!("{}", why),
-            };
-            output.push(optional_character);
+            let cell;
+            (line, cell) = crate_cell(line)?;
+            skewed_stack.push(cell);
 
             // consume one space if present
             if !line.is_empty() {
@@ -146,7 +134,7 @@ mod parser {
             }
         }
 
-        Ok((input, output))
+        Ok((remainder, skewed_stack))
     }
 
     pub fn crate_init_rows(input: &str) -> (&str, Vec<Vec<char>>) {
@@ -163,75 +151,46 @@ mod parser {
                 matrix.push(row);
             }
         }
-        let transposed = transpose_and_reverse(matrix);
+        let transposed = transpose_and_reverse(&matrix);
         // reverse order maybe?
         (trash_and_instructions, transposed)
     }
 
-    pub fn instruction(input: &str) -> IResult<&str, Instruction> {
-        fn move_string_parser(input: &str) -> IResult<&str, &str> {
-            tag("move")(input)
-        }
-
-        // will fail if there is a line ending tho
-        //let (input, line) = not_line_ending(input)?;
-
-        // todo: add spaces to tags below and remove space wild cards from instruction var
-        let fn_from_str = tag("from");
-        let fn_to_str = tag("to");
-
+    pub fn instruction(input: &str) -> IResult<&str, Instruction, Error<&str>> {
         // example "move 2 from 2 to 8";
-        let (remaining, instruction) = match tuple((
-            opt(newline),
-            move_string_parser,
-            space1,
-            digit1,
-            space1,
-            fn_from_str,
-            space1,
-            digit1,
-            space1,
-            fn_to_str,
-            space1,
-            digit1,
-            opt(newline),
-        ))(input)
-        {
-            Ok((remaining, (_, _, _, repetitions, _, _, _, src, _, _, _, dest, _))) => {
-                // Yolo, what can go wrong 😅?
 
-                let repetitions = repetitions.parse::<u32>().unwrap();
-                let src = src.parse::<u8>().unwrap();
-                let dest = dest.parse::<u8>().unwrap();
+        let (remaining, consumed) = tuple((
+            opt(newline),
+            tag("move "),
+            digit1, // repetitions
+            tag(" from "),
+            digit1, // src
+            tag(" to "),
+            digit1, // dest
+            opt(newline),
+        ))(input)?;
+        let (_, _, repetitions, _, src, _, dest, _) = consumed;
 
-                (
-                    remaining,
-                    Instruction {
-                        repetitions,
-                        src,
-                        dest,
-                    },
-                )
-            }
-            Err(why) => panic!("{}", why),
+        // todo handle errors. Require converting errors
+        let repetitions = repetitions.parse::<u32>().unwrap();
+        let src = src.parse::<u8>().unwrap();
+        let dest = dest.parse::<u8>().unwrap();
+
+        let instruction = Instruction {
+            repetitions,
+            src,
+            dest,
         };
 
         Ok((remaining, instruction))
     }
 
     pub fn throw_away_trash(input: &str) -> IResult<&str, &str> {
-        fn get_crate_ids(input: &str) -> IResult<&str, &str> {
-            not_line_ending(input)
-        }
-        fn match_line_ending(input: &str) -> IResult<&str, &str> {
-            line_ending(input)
-        }
+        let (remainder, _consumed) = not_line_ending(input)?;
+        let (remainder, _consumed) = line_ending(remainder)?;
+        let (remainder, consumed) = line_ending(remainder)?;
 
-        let (remainder, _) = get_crate_ids(input)?;
-        let (remainder, _) = line_ending(remainder)?;
-        let (remainder, matches) = line_ending(remainder)?;
-
-        Ok((remainder, matches))
+        Ok((remainder, consumed))
     }
 
     pub fn instructions(input: &str) -> Vec<Instruction> {
@@ -239,9 +198,9 @@ mod parser {
 
         let mut input = input;
         while !input.is_empty() {
-            let (remaining_input, tmp_instruction) = instruction(input).unwrap();
+            let (remaining, tmp_instruction) = instruction(input).unwrap();
             instructions.push(tmp_instruction);
-            input = remaining_input;
+            input = remaining;
         }
         instructions
     }
@@ -365,7 +324,7 @@ mod parser {
 
             let expected_matrix = vec![vec!['Z', 'N'], vec!['M', 'C', 'D'], vec!['P']];
 
-            assert_eq!(expected_matrix, transpose_and_reverse(original_matrix));
+            assert_eq!(expected_matrix, transpose_and_reverse(&original_matrix));
         }
 
         #[test]
@@ -454,11 +413,6 @@ move 1 from 2 to 1
 move 3 from 1 to 3
 move 2 from 2 to 1
 move 1 from 1 to 2"
-    }
-
-    #[test]
-    fn test_parse_stack() {
-        const INPUT: &str = get_example_input();
     }
 
     #[test]

@@ -67,7 +67,26 @@ pub struct Rucksack<'a> {
     compartment2: &'a str,
 }
 
+impl<'a> From<&'a str> for Rucksack<'a> {
+    fn from(value: &'a str) -> Self {
+        let (first, second) = value.split_at(value.len() / 2);
+        Rucksack {
+            compartment1: first,
+            compartment2: second,
+        }
+    }
+}
+
 impl<'a> Rucksack<'a> {
+    // TODO: convert into impl TryFrom
+    fn from_str(line: &'a str) -> Self {
+        let (first, second) = line.split_at(line.len() / 2);
+        Rucksack {
+            compartment1: first,
+            compartment2: second,
+        }
+    }
+
     fn get_inventory(&self) -> Vec<char> {
         let mut output = self.compartment1.chars().collect::<Vec<char>>();
         output.extend(self.compartment2.chars());
@@ -75,25 +94,13 @@ impl<'a> Rucksack<'a> {
         output
     }
 
-    fn from_str(line: &'a str) -> Self {
-        let first = &line[0..line.len() / 2];
-        let second = &line[line.len() / 2..];
-        Rucksack {
-            compartment1: first,
-            compartment2: second,
-        }
-    }
-
     fn find_common_char(&self) -> char {
-        let mut common_character = None;
-
-        self.compartment2.chars().for_each(|character| {
-            if self.compartment1.contains(character) {
-                common_character = Some(character);
-            }
-        });
-        common_character.unwrap()
+        self.compartment2
+            .chars()
+            .find(|character| self.compartment1.contains(*character))
+            .unwrap()
     }
+
     fn sum_priorities(&self) -> u32 {
         get_priority(self.find_common_char())
     }
@@ -120,11 +127,41 @@ impl<'a> Group<'a> {
             hash_set
         });
 
+        /*
+        # from https://https://beta.openai.com/playground
+
+        I don't understand why this line compiles just fine
+        ```
+                let mut rucksacks = [
+                    HashSet::<char>::new(),
+                    HashSet::<char>::new(),
+                    HashSet::<char>::new(),
+                ];
+        ```
+        but this one don't
+        ```
+                let mut rucksacks = [HashSet::<char>::new(); 3];
+        ```
+
+            The line that compiles just fine creates an array of three elements, each of which is a `HashSet` of characters. The second line attempts to create an array of three elements, each of which is an empty `HashSet` of characters. However, this syntax is not valid in Rust. To create an array with multiple elements of the same type, the syntax `[element; count]` must be used, where `element` is the initial value of each element in the array and `count` is the number of elements in the array.
+
+        > How can I write the line that compiles more compact?
+
+            The line can be written more compactly as follows:
+
+            ```
+            let mut rucksacks = [HashSet::<char>::new(); 3];
+            ```
+
+        AI will not take over developers jobs just yet.
+        */
+
         let mut rucksacks = [
             HashSet::<char>::new(),
             HashSet::<char>::new(),
             HashSet::<char>::new(),
         ];
+
         for (i, hash_set) in rucksacks_iter.enumerate() {
             rucksacks[i] = hash_set;
         }
@@ -145,10 +182,31 @@ impl<'a> Group<'a> {
         unreachable!();
     }
 
+    /*
+        can this code be written in a better way?
+        ```
+            pub fn sum_priorities(&self) -> u32 {
+                let [g1, g2, g3] = self.elfes.clone().map(|elf| elf.sum_priorities());
+                g1 + g2 + g3
+            }
+        ```
+
+        Yes, this code can be written in a better way. Instead of manually adding up the individual priorities, you can use the `sum` method on the `elfes` collection to get the total sum of the priorities:
+
+        ```
+        pub fn sum_priorities(&self) -> u32 {
+            self.elfes.clone().map(|elf| elf.sum_priorities()).sum()
+        }
+        ```
+    */
+
     #[must_use]
     pub fn sum_priorities(&self) -> u32 {
-        let [g1, g2, g3] = self.elfes.clone().map(|elf| elf.sum_priorities());
-        g1 + g2 + g3
+        self.elfes
+            .clone()
+            .map(|elf| elf.sum_priorities())
+            .iter()
+            .sum()
     }
 }
 
@@ -187,6 +245,8 @@ pub fn get_priority(character: char) -> u32 {
     .into()
 }
 
+/// # Panics
+/// on faulty input
 #[must_use]
 pub fn sum_priorities(input: &str) -> u32 {
     input
@@ -194,7 +254,7 @@ pub fn sum_priorities(input: &str) -> u32 {
         .map(str::trim)
         .skip_while(|&line| line.is_empty())
         .map(|line| {
-            let rucksack = Rucksack::from_str(line);
+            let rucksack = Rucksack::try_from(line).unwrap();
             get_priority(rucksack.find_common_char())
         })
         .sum::<u32>()

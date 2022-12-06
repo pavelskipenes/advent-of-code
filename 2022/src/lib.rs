@@ -1,14 +1,12 @@
-// #![deny(clippy::pedantic)]
-// #![deny(clippy::perf)]
-// #![deny(clippy::correctness)]
-// #![deny(clippy::suspicious)]
-// #![deny(clippy::style)]
-// #![deny(deprecated)]
-// #![deny(unknown_lints)]
-// #![deny(future_incompatible)]
-// #![deny(clippy::undocumented_unsafe_blocks)]
-//#![deny(dead_code)]
-// #![deny(unused)]
+#![warn(clippy::pedantic)]
+#![allow(clippy::items_after_statements)]
+#![warn(clippy::perf)]
+#![warn(clippy::correctness)]
+#![warn(clippy::suspicious)]
+#![warn(clippy::style)]
+#![deny(deprecated)]
+#![deny(future_incompatible)]
+#![deny(unknown_lints)]
 
 pub mod day_1;
 pub mod day_2;
