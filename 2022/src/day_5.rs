@@ -35,10 +35,18 @@ pub struct Instruction {
 }
 
 impl Instruction {
-    fn execute(&self, stacks: &mut Vec<Vec<char>>) {
+    fn execute_one_at_a_time(&self, stacks: &mut Vec<Vec<char>>) {
         for _ in 0..self.repetitions {
             let tmp = stacks[self.src as usize - 1].pop().unwrap();
             stacks[self.dest as usize - 1].push(tmp);
+        }
+    }
+    fn execute_many_at_a_time(&self, stacks: &mut Vec<Vec<char>>) {
+        let stack_size = stacks[self.src as usize - 1].len();
+        let tmp = &stacks[self.src as usize - 1].split_off(stack_size - self.repetitions as usize);
+
+        for character in tmp {
+            stacks[self.dest as usize - 1].push(*character);
         }
     }
 
@@ -59,7 +67,18 @@ pub fn run_problem_1(input: &str) -> String {
     let instructions = parser::instructions(remaining_input);
 
     for instruction in instructions {
-        instruction.execute(&mut stacks);
+        instruction.execute_one_at_a_time(&mut stacks);
+    }
+    Instruction::get_top_stack_as_string(&stacks)
+}
+
+pub fn run_problem_2(input: &str) -> String {
+    let (remaining_input, mut stacks) = parser::crate_init_rows(input);
+    let (remaining_input, _trash) = parser::throw_away_trash(remaining_input).unwrap();
+    let instructions = parser::instructions(remaining_input);
+
+    for instruction in instructions {
+        instruction.execute_many_at_a_time(&mut stacks);
     }
     Instruction::get_top_stack_as_string(&stacks)
 }
@@ -382,8 +401,6 @@ move 1 from 1 to 2";
             let mut instructions = vec![];
 
             while !remainder.is_empty() {
-                dbg!(&remainder);
-                dbg!(&instructions);
                 let (tmp_remainder, tmp_instruction) = instruction(remainder).unwrap();
                 instructions.push(tmp_instruction);
                 remainder = tmp_remainder;
@@ -421,7 +438,7 @@ move 1 from 1 to 2";
 mod tests {
     // use super::*;
 
-    use crate::day_5::run_problem_1;
+    use crate::day_5::{run_problem_1, run_problem_2};
 
     fn get_input() -> &'static str {
         include_str!("../puzzle_input/day_5.txt")
@@ -459,18 +476,16 @@ move 1 from 1 to 2"
     }
 
     #[test]
-    #[ignore]
     fn test_example_2() {
-        // const INPUT: &str = super::tests::get_example_input();
-        // const ANSWER1: u32 = u32::MAX;
-        // assert_eq!(process_1(INPUT), ANSWER1);
+        const INPUT: &str = super::tests::get_example_input();
+        const ANSWER1: &str = "MCD";
+        assert_eq!(run_problem_2(INPUT), ANSWER1.to_string());
     }
 
     #[test]
-    #[ignore]
     fn test_problem_2() {
-        // let input = get_input();
-        // const ANSWER: u32 = u32::MAX;
-        // assert_eq!(process_2(input), ANSWER2);
+        let input = get_input();
+        const ANSWER: &str = "PRTTGRFPB";
+        assert_eq!(run_problem_2(input), ANSWER.to_string());
     }
 }
