@@ -1,3 +1,66 @@
+#[derive(Debug, PartialEq, Eq)]
+pub struct Instruction {
+    repetitions: u32,
+    src: u8,
+    dest: u8,
+}
+
+impl Instruction {
+    fn execute_one_at_a_time(&self, stacks: &mut [Vec<char>]) {
+        for _ in 0..self.repetitions {
+            let block = stacks[self.src as usize - 1].pop().unwrap();
+            stacks[self.dest as usize - 1].push(block);
+        }
+    }
+    fn execute_many_at_a_time(&self, stacks: &mut [Vec<char>]) {
+        let remaining_size = stacks[self.src as usize - 1].len() - self.repetitions as usize;
+        let blocks = &stacks[self.src as usize - 1].split_off(remaining_size);
+
+        for block in blocks {
+            stacks[self.dest as usize - 1].push(*block);
+        }
+    }
+
+    fn get_top_stack_as_string(stacks: &Vec<Vec<char>>) -> String {
+        let mut result = "".to_string();
+        for stack in stacks {
+            if let Some(character) = stack.last() {
+                result.push(*character);
+            };
+        }
+        result
+    }
+}
+
+pub enum Crane {
+    CrateMover9000,
+    CrateMover9001,
+}
+
+/// # Panics
+/// Can panic yes
+#[must_use]
+pub fn simulate_crane(input: &str, crane: &Crane) -> String {
+    let (remaining_input, mut stacks) = parser::parse_crate_setup(input);
+    let (remaining_input, _trash) = parser::parse_trash(remaining_input).unwrap();
+    let instructions = parser::parse_instructions(remaining_input);
+
+    match crane {
+        Crane::CrateMover9000 => {
+            for instruction in instructions {
+                instruction.execute_one_at_a_time(&mut stacks);
+            }
+        }
+        Crane::CrateMover9001 => {
+            for instruction in instructions {
+                instruction.execute_many_at_a_time(&mut stacks);
+            }
+        }
+    }
+
+    Instruction::get_top_stack_as_string(&stacks)
+}
+
 fn transpose_and_reverse(matrix: &[Vec<Option<char>>]) -> Vec<Vec<char>> {
     let mut transposed: Vec<Vec<char>> = vec![];
     for col in 0..matrix[0].len() {
@@ -13,69 +76,9 @@ fn transpose_and_reverse(matrix: &[Vec<Option<char>>]) -> Vec<Vec<char>> {
     transposed
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct Instruction {
-    repetitions: u32,
-    src: u8,
-    dest: u8,
-}
-
-impl Instruction {
-    fn execute_one_at_a_time(&self, stacks: &mut [Vec<char>]) {
-        for _ in 0..self.repetitions {
-            let tmp = stacks[self.src as usize - 1].pop().unwrap();
-            stacks[self.dest as usize - 1].push(tmp);
-        }
-    }
-    fn execute_many_at_a_time(&self, stacks: &mut [Vec<char>]) {
-        let stack_size = stacks[self.src as usize - 1].len();
-        let tmp = &stacks[self.src as usize - 1].split_off(stack_size - self.repetitions as usize);
-
-        for character in tmp {
-            stacks[self.dest as usize - 1].push(*character);
-        }
-    }
-
-    fn get_top_stack_as_string(stacks: &Vec<Vec<char>>) -> String {
-        let mut result = "".to_string();
-        for stack in stacks {
-            if let Some(character) = stack.last() {
-                result.push(*character);
-            };
-        }
-        result
-    }
-}
-
-/// # Panics
-/// if input there is an issue with the format of the input
-#[must_use]
-pub fn run_problem_1(input: &str) -> String {
-    let (remaining_input, mut stacks) = parser::crate_init_rows(input);
-    let (remaining_input, _trash) = parser::throw_away_trash(remaining_input).unwrap();
-    let instructions = parser::instructions(remaining_input);
-
-    for instruction in instructions {
-        instruction.execute_one_at_a_time(&mut stacks);
-    }
-    Instruction::get_top_stack_as_string(&stacks)
-}
-
-/// # Panics
-/// if input there is an issue with the format of the input
-#[must_use]
-pub fn run_problem_2(input: &str) -> String {
-    let (remaining_input, mut stacks) = parser::crate_init_rows(input);
-    let (remaining_input, _trash) = parser::throw_away_trash(remaining_input).unwrap();
-    let instructions = parser::instructions(remaining_input);
-
-    for instruction in instructions {
-        instruction.execute_many_at_a_time(&mut stacks);
-    }
-    Instruction::get_top_stack_as_string(&stacks)
-}
-
 mod parser {
+    use super::Instruction;
+    use crate::day_5::transpose_and_reverse;
     use nom::{
         branch::alt,
         bytes::complete::{is_not, tag},
@@ -88,12 +91,8 @@ mod parser {
         IResult,
     };
 
-    use crate::day_5::transpose_and_reverse;
-
-    use super::Instruction;
-
     /// consume one cell (three spaces) from input
-    pub fn crate_cell(input: &str) -> IResult<&str, Option<char>> {
+    fn crate_cell(input: &str) -> IResult<&str, Option<char>> {
         let (remainder, consumed) =
             alt((delimited(char('['), alpha1, char(']')), tag("   ")))(input)?;
 
@@ -110,7 +109,7 @@ mod parser {
 
     /// Consumes one line from `input` and returns the remaining of input without parsed line
     /// and a vec of chars
-    pub fn crate_line(input: &str) -> IResult<&str, Vec<Option<char>>, Error<&str>> {
+    fn crate_line(input: &str) -> IResult<&str, Vec<Option<char>>, Error<&str>> {
         let mut skewed_stack = vec![];
 
         // get everything before a line ending
@@ -137,26 +136,7 @@ mod parser {
         Ok((remainder, skewed_stack))
     }
 
-    pub fn crate_init_rows(input: &str) -> (&str, Vec<Vec<char>>) {
-        fn until_wrapper<'a>(input: &'a str, characters: &'a str) -> IResult<&'a str, &'a str> {
-            is_not(characters)(input)
-        }
-
-        let (trash_and_instructions, creates_section) = until_wrapper(input, "1").unwrap();
-        // strip off number line
-        let mut matrix: Vec<Vec<Option<char>>> = vec![];
-        for line in creates_section.lines() {
-            let (_, row) = crate_line(line).unwrap();
-            if !row.is_empty() {
-                matrix.push(row);
-            }
-        }
-        let transposed = transpose_and_reverse(&matrix);
-        // reverse order maybe?
-        (trash_and_instructions, transposed)
-    }
-
-    pub fn instruction(input: &str) -> IResult<&str, Instruction, Error<&str>> {
+    fn instruction(input: &str) -> IResult<&str, Instruction, Error<&str>> {
         // example "move 2 from 2 to 8";
 
         let (remaining, consumed) = tuple((
@@ -185,7 +165,25 @@ mod parser {
         Ok((remaining, instruction))
     }
 
-    pub fn throw_away_trash(input: &str) -> IResult<&str, &str> {
+    pub fn parse_crate_setup(input: &str) -> (&str, Vec<Vec<char>>) {
+        fn until_wrapper<'a>(input: &'a str, characters: &'a str) -> IResult<&'a str, &'a str> {
+            is_not(characters)(input)
+        }
+        // strip off number line
+        let (remainder, creates_section) = until_wrapper(input, "1").unwrap();
+
+        let mut matrix: Vec<Vec<Option<char>>> = vec![];
+        for line in creates_section.lines() {
+            let (_, row) = crate_line(line).unwrap();
+            if !row.is_empty() {
+                matrix.push(row);
+            }
+        }
+        let transposed = transpose_and_reverse(&matrix);
+        (remainder, transposed)
+    }
+
+    pub fn parse_trash(input: &str) -> IResult<&str, &str> {
         let (remainder, _consumed) = not_line_ending(input)?;
         let (remainder, _consumed) = line_ending(remainder)?;
         let (remainder, consumed) = line_ending(remainder)?;
@@ -193,7 +191,7 @@ mod parser {
         Ok((remainder, consumed))
     }
 
-    pub fn instructions(input: &str) -> Vec<Instruction> {
+    pub fn parse_instructions(input: &str) -> Vec<Instruction> {
         let mut instructions = vec![];
 
         let mut input = input;
@@ -207,99 +205,58 @@ mod parser {
 
     #[cfg(test)]
     mod tests {
-        use super::{crate_init_rows, throw_away_trash};
-        use crate::day_5::{
-            parser::{crate_cell, crate_line, instruction},
-            transpose_and_reverse, Instruction,
+        use super::{parse_crate_setup, parse_trash};
+        use crate::{
+            day_5::{
+                parser::{crate_line, instruction},
+                tests::EXAMPLE_INPUT,
+                transpose_and_reverse, Instruction,
+            },
+            tester::Test,
         };
 
         #[test]
-        fn parse_one_crate_cell() {
-            let input = "[Z]";
-            let expected = Some('Z');
+        fn test_crate_cell() {
+            const TESTS: [Test<&str, Option<char>>; 2] = [
+                Test {
+                    input: "[Z]",
+                    output: Some('Z'),
+                },
+                Test {
+                    input: "   ",
+                    output: None,
+                },
+            ];
 
-            let (_remaning_string, output) = crate_cell(input).unwrap();
-            assert_eq!(output, expected);
-
-            let input = "   ";
-            let expected = None;
-
-            let (_, output) = crate_cell(input).unwrap();
-            assert_eq!(output, expected);
+            let (_asd, output) = super::crate_cell(TESTS[0].input).unwrap();
+            assert_eq!(output, TESTS[0].output);
+            let (_, output) = super::crate_cell(TESTS[1].input).unwrap();
+            assert_eq!(output, TESTS[1].output);
         }
 
         #[test]
-        fn parse_one_crate_line_one_cell() {
-            let input = "[A]";
-            let expected = vec![Some('A')];
+        fn test_create_line() {
+            const INPUT: [&str; 6] = [
+                "[A]",
+                "[A] [B]",
+                "[F] [U] [C] [K]    ",
+                "    [F] [U] [C] [K]",
+                "    [F] [U] [C] [K]    ",
+                "    [F] [U]     [C] [K]    ",
+            ];
+            let expected = [
+                vec![Some('A')],
+                vec![Some('A'), Some('B')],
+                vec![Some('F'), Some('U'), Some('C'), Some('K'), None],
+                vec![None, Some('F'), Some('U'), Some('C'), Some('K')],
+                vec![None, Some('F'), Some('U'), Some('C'), Some('K'), None],
+                vec![None, Some('F'), Some('U'), None, Some('C'), Some('K'), None],
+            ];
 
-            let output = match crate_line(input) {
-                Ok((_remaining_input, vec_optional_chars)) => vec_optional_chars,
-                Err(why) => panic!("{}", why),
-            };
-            assert_eq!(output, expected);
-        }
-
-        #[test]
-        fn parse_one_crate_line_two_cells() {
-            let input = "[A] [B]";
-            let expected = vec![Some('A'), Some('B')];
-
-            let output = match crate_line(input) {
-                Ok((_remaining_input, vec_optional_chars)) => vec_optional_chars,
-                Err(why) => panic!("{}", why),
-            };
-            assert_eq!(output, expected);
-        }
-
-        #[test]
-        fn parse_one_crate_line_space_end() {
-            // space at the end
-            let input = "[F] [U] [C] [K]    ";
-            let expected = vec![Some('F'), Some('U'), Some('C'), Some('K'), None];
-
-            let output = match crate_line(input) {
-                Ok((_remaining_input, vec_optional_chars)) => vec_optional_chars,
-                Err(why) => panic!("{}", why),
-            };
-            assert_eq!(output, expected);
-        }
-        #[test]
-        fn parse_one_crate_line_space_front() {
-            // space at front
-            let input = "    [F] [U] [C] [K]";
-            let expected = vec![None, Some('F'), Some('U'), Some('C'), Some('K')];
-
-            let output = match crate_line(input) {
-                Ok((_remaining_input, vec_optional_chars)) => vec_optional_chars,
-                Err(why) => panic!("{}", why),
-            };
-            assert_eq!(output, expected);
-        }
-        #[test]
-        fn parse_one_crate_line_space_front_and_back() {
-            // space at front
-            let input = "    [F] [U] [C] [K]    ";
-            let expected = vec![None, Some('F'), Some('U'), Some('C'), Some('K'), None];
-
-            let output = match crate_line(input) {
-                Ok((_remaining_input, vec_optional_chars)) => vec_optional_chars,
-                Err(why) => panic!("{}", why),
-            };
-            assert_eq!(output, expected);
-        }
-
-        #[test]
-        fn parse_one_crate_line_space_front_back_and_in_between() {
-            // space at front
-            let input = "    [F] [U]     [C] [K]    ";
-            let expected = vec![None, Some('F'), Some('U'), None, Some('C'), Some('K'), None];
-
-            let output = match crate_line(input) {
-                Ok((_remaining_input, vec_optional_chars)) => vec_optional_chars,
-                Err(why) => panic!("{}", why),
-            };
-            assert_eq!(output, expected);
+            for (i, expected_output) in expected.iter().enumerate() {
+                let (_, output) = crate_line(INPUT[i]).unwrap();
+                assert_eq!(&output, expected_output);
+            }
         }
 
         #[test]
@@ -329,34 +286,15 @@ mod parser {
 
         #[test]
         fn parse_crates() {
-            let input = r"    [D]    
-[N] [C]    
-[Z] [M] [P]
- 1   2   3 
-
-move 1 from 2 to 1
-move 3 from 1 to 3
-move 2 from 2 to 1
-move 1 from 1 to 2";
-            let (_remainder, matrix) = crate_init_rows(input);
             let expected_matrix = vec![vec!['Z', 'N'], vec!['M', 'C', 'D'], vec!['P']];
+            let (_, matrix) = parse_crate_setup(EXAMPLE_INPUT);
             assert_eq!(expected_matrix, matrix);
         }
 
         #[test]
         fn test_instruction_parser() {
-            let input = r"    [D]    
-[N] [C]    
-[Z] [M] [P]
- 1   2   3 
-
-move 1 from 2 to 1
-move 3 from 1 to 3
-move 2 from 2 to 1
-move 1 from 1 to 2";
-
-            let (remainder_and_trash, _matrix) = crate_init_rows(input);
-            let (mut remainder, _trash) = throw_away_trash(remainder_and_trash).unwrap();
+            let (remainder_and_trash, _matrix) = parse_crate_setup(EXAMPLE_INPUT);
+            let (mut remainder, _trash) = parse_trash(remainder_and_trash).unwrap();
             let mut instructions = vec![];
 
             while !remainder.is_empty() {
@@ -395,16 +333,10 @@ move 1 from 1 to 2";
 
 #[cfg(test)]
 mod tests {
-    // use super::*;
+    use crate::day_5::{simulate_crane, Crane};
 
-    use crate::day_5::{run_problem_1, run_problem_2};
-
-    fn get_input() -> &'static str {
-        include_str!("../puzzle_input/day_5.txt")
-    }
-
-    const fn get_example_input() -> &'static str {
-        r"    [D]    
+    const INPUT: &str = include_str!("../puzzle_input/day_5.txt");
+    pub const EXAMPLE_INPUT: &str = r"    [D]    
 [N] [C]    
 [Z] [M] [P]
  1   2   3 
@@ -412,34 +344,32 @@ mod tests {
 move 1 from 2 to 1
 move 3 from 1 to 3
 move 2 from 2 to 1
-move 1 from 1 to 2"
+move 1 from 1 to 2";
+
+    const ANSWER: [&str; 2] = ["ZRLJGSCTR", "PRTTGRFPB"];
+    const EXAMPLE_ANSWER: [&str; 2] = ["CMZ", "MCD"];
+
+    #[test]
+    fn example() {
+        assert_eq!(
+            simulate_crane(EXAMPLE_INPUT, &Crane::CrateMover9000),
+            EXAMPLE_ANSWER[0]
+        );
+        assert_eq!(
+            simulate_crane(EXAMPLE_INPUT, &Crane::CrateMover9001),
+            EXAMPLE_ANSWER[1]
+        );
     }
 
     #[test]
-    fn test_example_1() {
-        const INPUT: &str = super::tests::get_example_input();
-        const ANSWER: &str = "CMZ";
-        assert_eq!(super::run_problem_1(INPUT), ANSWER.to_string());
-    }
-
-    #[test]
-    fn test_problem_1() {
-        let input = get_input();
-        const ANSWER1: &str = "ZRLJGSCTR";
-        assert_eq!(run_problem_1(input), ANSWER1.to_string());
-    }
-
-    #[test]
-    fn test_example_2() {
-        const INPUT: &str = super::tests::get_example_input();
-        const ANSWER1: &str = "MCD";
-        assert_eq!(run_problem_2(INPUT), ANSWER1.to_string());
-    }
-
-    #[test]
-    fn test_problem_2() {
-        let input = get_input();
-        const ANSWER: &str = "PRTTGRFPB";
-        assert_eq!(run_problem_2(input), ANSWER.to_string());
+    fn problem() {
+        assert_eq!(
+            simulate_crane(INPUT, &Crane::CrateMover9000),
+            ANSWER[0].to_string()
+        );
+        assert_eq!(
+            simulate_crane(INPUT, &Crane::CrateMover9001),
+            ANSWER[1].to_string()
+        );
     }
 }

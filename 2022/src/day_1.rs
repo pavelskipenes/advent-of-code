@@ -105,58 +105,40 @@ pub fn elf_carrying_most_calories(inventory_all: &str, top: usize) -> u64 {
 
 #[cfg(test)]
 mod tests {
+    use crate::day_1::elf_carrying_most_calories;
 
-    const fn get_input() -> &'static str {
-        include_str!("../puzzle_input/day_1.txt")
-    }
+    const INPUT: &str = include_str!("../puzzle_input/day_1.txt");
+    const EXAMPLE_INPUT: &str = r"
+1000
+2000
+3000
 
-    const fn get_example_input() -> &'static str {
-        r"
-        1000
-        2000
-        3000
+4000
 
-        4000
+5000
+6000
 
-        5000
-        6000
+7000
+8000
+9000
 
-        7000
-        8000
-        9000
+10000";
+    const ANSWER: [u64; 2] = [69289, 205_615];
+    const EXAMPLE_ANSWER: [u64; 2] = [24000, 45000];
 
-        10000"
+    #[test]
+    fn example() {
+        for (index, top) in [1, 3].iter().enumerate() {
+            let output = elf_carrying_most_calories(EXAMPLE_INPUT, *top);
+            assert_eq!(output, EXAMPLE_ANSWER[index]);
+        }
     }
 
     #[test]
-    fn test_example_1() {
-        const INPUT: &str = get_example_input();
-        const ANSWER: u64 = 24000;
-        let output = super::elf_carrying_most_calories(INPUT, 1);
-        assert_eq!(output, ANSWER);
-    }
-
-    #[test]
-    fn test_problem_1() {
-        const INPUT: &str = get_input();
-        const ANSWER: u64 = 69289;
-        let result = super::elf_carrying_most_calories(INPUT, 1);
-        assert_eq!(result, ANSWER);
-    }
-
-    #[test]
-    fn test_example_2() {
-        const INPUT: &str = get_example_input();
-        const ANSWER: u64 = 45000;
-        let output = super::elf_carrying_most_calories(INPUT, 3);
-        assert_eq!(output, ANSWER);
-    }
-
-    #[test]
-    fn test_problem_2() {
-        const INPUT: &str = get_input();
-        const ANSWER: u64 = 205_615;
-        let output = super::elf_carrying_most_calories(INPUT, 3);
-        assert_eq!(output, ANSWER);
+    fn problem() {
+        for (index, top) in [1, 3].iter().enumerate() {
+            let result = elf_carrying_most_calories(INPUT, *top);
+            assert_eq!(result, ANSWER[index]);
+        }
     }
 }

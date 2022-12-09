@@ -262,11 +262,19 @@ pub fn sum_priorities(input: &str) -> u32 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::day_3::{create_groups, get_priority, sum_groups, sum_priorities, Rucksack};
 
-    fn get_input() -> &'static str {
-        include_str!("../puzzle_input/day_3.txt")
-    }
+    const INPUT: &str = include_str!("../puzzle_input/day_3.txt");
+    const EXAMPLE_INPUT: &str = r"
+vJrwpWtwJgWrhcsFMMfFFhFp
+jqHRNqRjqzjGDLGLrsFMfFZSrLrFZsSL
+PmmdzqPrVvPwwTWBwg
+wMqvLMZHhHMvwLHjbvcjnnSBnvTQFn
+ttgJtRGJQctTZtZT
+CrZsJsPPZsGzwwsLwLmpwMDw";
+
+    const ANSWER: [u32; 2] = [8515, 2434];
+    const EXAMPLE_ANSWER: [u32; 2] = [157, 70];
 
     #[test]
     fn test_priority() {
@@ -279,69 +287,44 @@ mod tests {
     }
     #[test]
     fn test_common_char() {
-        const INPUT: &str = r"
-        vJrwpWtwJgWrhcsFMMfFFhFp
-        jqHRNqRjqzjGDLGLrsFMfFZSrLrFZsSL
-        PmmdzqPrVvPwwTWBwg
-        wMqvLMZHhHMvwLHjbvcjnnSBnvTQFn
-        ttgJtRGJQctTZtZT
-        CrZsJsPPZsGzwwsLwLmpwMDw";
-        const ANSWERS: [char; 6] = ['p', 'L', 'P', 'v', 't', 's'];
-
-        let lines: Vec<&str> = INPUT
+        let lines: Vec<&str> = EXAMPLE_INPUT
             .lines()
             .map(str::trim)
             .skip_while(|&line| str::is_empty(line))
             .collect();
 
+        const ANSWERS: [char; 6] = ['p', 'L', 'P', 'v', 't', 's'];
         for i in 0..6 {
             assert_eq!(Rucksack::from_str(lines[i]).find_common_char(), ANSWERS[i]);
         }
     }
 
     #[test]
-    fn test_example_1() {
-        const INPUT: &str = r"
-        vJrwpWtwJgWrhcsFMMfFFhFp
-        jqHRNqRjqzjGDLGLrsFMfFZSrLrFZsSL
-        PmmdzqPrVvPwwTWBwg
-        wMqvLMZHhHMvwLHjbvcjnnSBnvTQFn
-        ttgJtRGJQctTZtZT
-        CrZsJsPPZsGzwwsLwLmpwMDw";
-        assert_eq!(sum_priorities(INPUT), 157);
+    fn example_1() {
+        assert_eq!(sum_priorities(EXAMPLE_INPUT), EXAMPLE_ANSWER[0]);
     }
 
     #[test]
-    fn test_problem_1() {
-        let input = get_input();
-        assert_eq!(sum_priorities(input), 8515);
+    fn problem_1() {
+        assert_eq!(sum_priorities(INPUT), ANSWER[0]);
     }
 
     #[test]
-    fn test_example_2() {
-        const INPUT: &str = r"
-        vJrwpWtwJgWrhcsFMMfFFhFp
-        jqHRNqRjqzjGDLGLrsFMfFZSrLrFZsSL
-        PmmdzqPrVvPwwTWBwg
-        wMqvLMZHhHMvwLHjbvcjnnSBnvTQFn
-        ttgJtRGJQctTZtZT
-        CrZsJsPPZsGzwwsLwLmpwMDw";
-
-        let groups = create_groups(INPUT);
+    fn example_2() {
+        let groups = create_groups(EXAMPLE_INPUT);
 
         assert_eq!(groups[0].find_common_char(), 'r');
         assert_eq!(groups[1].find_common_char(), 'Z');
         assert_eq!(get_priority(groups[0].find_common_char()), 18);
         assert_eq!(get_priority(groups[1].find_common_char()), 52);
 
-        assert_eq!(sum_groups(&groups), 70);
+        assert_eq!(sum_groups(&groups), EXAMPLE_ANSWER[1]);
     }
 
     #[test]
-    fn test_problem_2() {
-        let input = get_input();
-        let groups = create_groups(input);
+    fn problem_2() {
+        let groups = create_groups(INPUT);
         let sum = sum_groups(&groups);
-        assert_eq!(sum, 2434);
+        assert_eq!(sum, ANSWER[1]);
     }
 }

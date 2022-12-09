@@ -29,30 +29,31 @@ fn find_distinct_chars(input: &'static str, length: usize) -> (&'static str, usi
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::day_6::{find_start_of_message, find_start_of_packet};
 
-    // (input, expected_problem_1, expected_problem2)
-    const EXPECTED: (&str, usize, usize) = (include_str!("../puzzle_input/day_6.txt"), 1702, 3559);
-    const EXAMPLE_EXPECTED: [(&str, usize, usize); 5] = [
-        ("mjqjpqmgbljsphdztnvjfqwrcgsmlb", 7, 19),
-        ("bvwbjplbgvbhsrlpgdmjqwftvncz", 5, 23),
-        ("nppdvjthqldpwncqszvftbrmjlhg", 6, 23),
-        ("nznrnfrfntjfmvfwmzdfjlvtqnbhcprsg", 10, 29),
-        ("zcfzfwzzqfrljwzlrfnpqdbhtmscgvjw", 11, 26),
+    const INPUT: &str = include_str!("../puzzle_input/day_6.txt");
+    const EXAMPLE_INPUT: [&str; 5] = [
+        "mjqjpqmgbljsphdztnvjfqwrcgsmlb",
+        "bvwbjplbgvbhsrlpgdmjqwftvncz",
+        "nppdvjthqldpwncqszvftbrmjlhg",
+        "nznrnfrfntjfmvfwmzdfjlvtqnbhcprsg",
+        "zcfzfwzzqfrljwzlrfnpqdbhtmscgvjw",
     ];
+
+    const ANSWER: [usize; 2] = [1702, 3559];
+    const EXAMPLE_ANSWER: [[usize; 2]; 5] = [[7, 19], [5, 23], [6, 23], [10, 29], [11, 26]];
 
     #[test]
     fn example() {
-        for (input, expected1, expected2) in &EXAMPLE_EXPECTED {
-            assert_eq!(find_start_of_packet(input), *expected1);
-            assert_eq!(find_start_of_message(input), *expected2);
+        for (input, expected) in EXAMPLE_INPUT.iter().zip(EXAMPLE_ANSWER.iter()) {
+            assert_eq!(find_start_of_packet(input), expected[0]);
+            assert_eq!(find_start_of_message(input), expected[1]);
         }
     }
 
     #[test]
     fn problem() {
-        let (input, expected1, expected2) = EXPECTED;
-        assert_eq!(find_start_of_packet(input), expected1);
-        assert_eq!(find_start_of_message(input), expected2);
+        assert_eq!(find_start_of_packet(INPUT), ANSWER[0]);
+        assert_eq!(find_start_of_message(INPUT), ANSWER[1]);
     }
 }

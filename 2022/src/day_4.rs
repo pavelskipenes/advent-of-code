@@ -100,59 +100,47 @@ pub fn count_num_ranges_with_partial_overlap(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::day_4::{
+        count_num_ranges_with_full_overlap, count_num_ranges_with_partial_overlap, get_ranges,
+    };
 
-    fn get_input() -> &'static str {
-        include_str!("../puzzle_input/day_4.txt")
+    const INPUT: &str = include_str!("../puzzle_input/day_4.txt");
+    const EXAMPLE_INPUT: &str = r"
+2-4,6-8
+2-3,4-5
+5-7,7-9
+2-8,3-7
+6-6,4-6
+2-6,4-8";
+
+    const ANSWER: [u32; 2] = [526, 886];
+    const EXAMPLE_ANSWER: [u32; 2] = [2, 4];
+
+    #[test]
+    fn example_1() {
+        let ranges = get_ranges(EXAMPLE_INPUT);
+        let output = count_num_ranges_with_full_overlap(&ranges);
+        assert_eq!(output, EXAMPLE_ANSWER[0]);
     }
 
     #[test]
-    fn test_example_1() {
-        const INPUT: &str = r"
-        2-4,6-8
-        2-3,4-5
-        5-7,7-9
-        2-8,3-7
-        6-6,4-6
-        2-6,4-8
-        ";
-        const ANSWER1: u32 = 2;
+    fn problem_1() {
         let ranges = get_ranges(INPUT);
         let output = count_num_ranges_with_full_overlap(&ranges);
-        assert_eq!(output, ANSWER1);
+        assert_eq!(output, ANSWER[0]);
     }
 
     #[test]
-    fn test_problem_1() {
-        let input = get_input();
-
-        let ranges = get_ranges(input);
-        let output = count_num_ranges_with_full_overlap(&ranges);
-        assert_eq!(output, 526);
+    fn example_2() {
+        let ranges = get_ranges(EXAMPLE_INPUT);
+        let output = count_num_ranges_with_partial_overlap(&ranges);
+        assert_eq!(output, EXAMPLE_ANSWER[1]);
     }
 
     #[test]
-    fn test_example_2() {
-        const INPUT: &str = r"
-        2-4,6-8
-        2-3,4-5
-        5-7,7-9
-        2-8,3-7
-        6-6,4-6
-        2-6,4-8
-        ";
-        const ANSWER1: u32 = 4;
+    fn problem_2() {
         let ranges = get_ranges(INPUT);
         let output = count_num_ranges_with_partial_overlap(&ranges);
-        assert_eq!(output, ANSWER1);
-    }
-
-    #[test]
-    fn test_problem_2() {
-        let input = get_input();
-
-        let ranges = get_ranges(input);
-        let output = count_num_ranges_with_partial_overlap(&ranges);
-        assert_eq!(output, 886);
+        assert_eq!(output, ANSWER[1]);
     }
 }

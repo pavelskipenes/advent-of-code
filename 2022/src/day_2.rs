@@ -50,6 +50,18 @@ pub enum Shape {
     Paper = 2,
     Scissors = 3,
 }
+impl TryFrom<i32> for Shape {
+    type Error = Error;
+
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        match value {
+            1 => Ok(Self::Rock),
+            2 => Ok(Self::Paper),
+            3 => Ok(Self::Scissors),
+            _ => Err(Error::CannotCreateShape),
+        }
+    }
+}
 
 impl TryFrom<char> for Shape {
     type Error = Error;
@@ -127,6 +139,19 @@ impl TryFrom<char> for RoundOutcome {
     }
 }
 
+impl TryFrom<i32> for RoundOutcome {
+    type Error = Error;
+
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Self::Loss),
+            3 => Ok(Self::Draw),
+            6 => Ok(Self::Victory),
+            _ => Err(Error::CannotCreateRoundOutcome),
+        }
+    }
+}
+
 /// # Panics
 ///
 /// Valid input is new line separated lines where each line contains two space separated character.
@@ -145,7 +170,7 @@ pub fn decrypt(input: &str, decryption_method: &DecryptionMethod) -> i32 {
         // calculate points for each round
         .fold((0, 0), |(opponent_total, player_total), string| {
             // points this round
-            let (opponent, player) = fight({
+            let (opponent, player) = play({
                 // extract first and last character
                 let (first_char, last_char) =
                     match &string.chars().collect::<Vec<char>>() as &[char] {
@@ -178,7 +203,7 @@ pub fn decrypt(input: &str, decryption_method: &DecryptionMethod) -> i32 {
 }
 
 #[must_use]
-pub fn fight((p1, p2): (Shape, Shape)) -> (i32, i32) {
+pub fn play((p1, p2): (Shape, Shape)) -> (i32, i32) {
     use RoundOutcome as RO;
     // add outcome points
     let (points1, points2) = match p1.battle(&p2) {
@@ -192,12 +217,19 @@ pub fn fight((p1, p2): (Shape, Shape)) -> (i32, i32) {
 
 #[cfg(test)]
 mod tests {
-    // problem 1
-    #[test]
-    fn test_types() {
-        use super::RoundOutcome as RO;
-        use super::*;
+    use super::RoundOutcome as RO;
+    use crate::day_2::{decrypt, DecryptionMethod as DM, Shape};
 
+    const INPUT: &str = include_str!("../puzzle_input/day_2.txt");
+    const EXAMPLE_INPUT: &str = r"
+A Y
+B X
+C Z";
+    const ANSWER: [i32; 2] = [10595, 9541];
+    const EXAMPLE_ANSWER: [i32; 2] = [15, 12];
+
+    #[test]
+    fn types() {
         assert_eq!(Shape::Rock as i32, 1);
         assert_eq!(Shape::Paper as i32, 2);
         assert_eq!(Shape::Scissors as i32, 3);
@@ -208,98 +240,72 @@ mod tests {
     }
 
     #[test]
-    fn tets_draw() {
-        use super::RoundOutcome as RO;
-        use super::*;
-
-        let dec_method = DecryptionMethod::NextAction;
+    fn draw() {
+        const DEC_METHOD: &DM = &DM::NextAction;
 
         assert_eq!(
             Shape::Rock as i32 + RO::Draw as i32,
-            decrypt("A X", &dec_method)
+            decrypt("A X", DEC_METHOD)
         );
         assert_eq!(
             Shape::Paper as i32 + RO::Draw as i32,
-            decrypt("B Y", &dec_method)
+            decrypt("B Y", DEC_METHOD)
         );
         assert_eq!(
             Shape::Scissors as i32 + RO::Draw as i32,
-            decrypt("C Z", &dec_method)
+            decrypt("C Z", DEC_METHOD)
         );
     }
 
     #[test]
-    fn tets_victory() {
-        use super::RoundOutcome as RO;
-        use super::*;
-        let dec_method = DecryptionMethod::NextAction;
+    fn victory() {
+        const DEC_METHOD: &DM = &DM::NextAction;
 
         assert_eq!(
             Shape::Paper as i32 + RO::Victory as i32,
-            decrypt("A Y", &dec_method)
+            decrypt("A Y", DEC_METHOD)
         );
         assert_eq!(
             Shape::Scissors as i32 + RO::Victory as i32,
-            decrypt("B Z", &dec_method)
+            decrypt("B Z", DEC_METHOD)
         );
         assert_eq!(
             Shape::Rock as i32 + RO::Victory as i32,
-            decrypt("C X", &dec_method)
+            decrypt("C X", DEC_METHOD)
         );
     }
 
     #[test]
-    fn tets_loss() {
-        use super::RoundOutcome as RO;
-        use super::*;
-        let dec_method = DecryptionMethod::NextAction;
+    fn loss() {
+        const DEC_METHOD: &DM = &DM::NextAction;
 
         assert_eq!(
             Shape::Scissors as i32 + RO::Loss as i32,
-            decrypt("A Z", &dec_method)
+            decrypt("A Z", DEC_METHOD)
         );
         assert_eq!(
             Shape::Rock as i32 + RO::Loss as i32,
-            decrypt("B X", &dec_method)
+            decrypt("B X", DEC_METHOD)
         );
         assert_eq!(
             Shape::Paper as i32 + RO::Loss as i32,
-            decrypt("C Y", &dec_method)
+            decrypt("C Y", DEC_METHOD)
         );
     }
 
     #[test]
-    fn test_problem_1() {
-        // prelude
-        use super::*;
-
-        let string = include_str!("../puzzle_input/day_2.txt");
-        let dec_method = DecryptionMethod::NextAction;
-        let result = decrypt(string, &dec_method);
-        assert_eq!(10595, result);
-    }
-
-    // problem 2
-    #[test]
-    fn test_example_2() {
-        use super::*;
-        let input = r"
-            A Y
-            B X
-            C Z";
-
-        let decryption_method = DecryptionMethod::NextOutcome;
-        let points = decrypt(input, &decryption_method);
-        assert_eq!(points, 12);
+    fn example() {
+        for (index, method) in [DM::NextAction, DM::NextOutcome].iter().enumerate() {
+            let points = decrypt(EXAMPLE_INPUT, method);
+            assert_eq!(points, EXAMPLE_ANSWER[index]);
+        }
     }
 
     #[test]
-    fn test_problem_2() {
-        use super::*;
-        let input = include_str!("../puzzle_input/day_2.txt");
-
-        let decryption_method = DecryptionMethod::NextOutcome;
-        let points = decrypt(input, &decryption_method);
-        assert_eq!(9541, points);
+    fn problem() {
+        for (index, method) in [DM::NextAction, DM::NextOutcome].iter().enumerate() {
+            let points = decrypt(INPUT, method);
+            assert_eq!(points, ANSWER[index]);
+        }
     }
 }
