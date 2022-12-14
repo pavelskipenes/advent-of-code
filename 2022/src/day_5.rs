@@ -206,33 +206,11 @@ mod parser {
     #[cfg(test)]
     mod tests {
         use super::{parse_crate_setup, parse_trash};
-        use crate::{
-            day_5::{
-                parser::{crate_line, instruction},
-                tests::EXAMPLE_INPUT,
-                transpose_and_reverse, Instruction,
-            },
-            tester::Test,
+        use crate::day_5::{
+            parser::{crate_line, instruction},
+            tests::EXAMPLE_INPUT,
+            transpose_and_reverse, Instruction,
         };
-
-        #[test]
-        fn test_crate_cell() {
-            const TESTS: [Test<&str, Option<char>>; 2] = [
-                Test {
-                    input: "[Z]",
-                    output: Some('Z'),
-                },
-                Test {
-                    input: "   ",
-                    output: None,
-                },
-            ];
-
-            let (_asd, output) = super::crate_cell(TESTS[0].input).unwrap();
-            assert_eq!(output, TESTS[0].output);
-            let (_, output) = super::crate_cell(TESTS[1].input).unwrap();
-            assert_eq!(output, TESTS[1].output);
-        }
 
         #[test]
         fn test_create_line() {
