@@ -1,6 +1,5 @@
-use std::{fmt::Display, rc::Rc};
+use std::{fmt::Display, ops::Deref, rc::Rc};
 
-use indextree::{Arena, NodeId};
 impl TryFrom<&'static str> for Command {
     type Error = Error;
 
@@ -110,10 +109,36 @@ impl FileNode {
         !self.is_directory()
     }
 
-    fn set_parent(&mut self, parent_node: NodeId) {
+    fn set_parent(&mut self, parent_node: Rc<FileNode>) {
         match self {
             FileNode::Directory(dir) => dir.parent = Some(parent_node),
             FileNode::File(file) => file.parent = Some(parent_node),
+        }
+    }
+
+    fn get_parent(&self) -> Option<Rc<FileNode>> {
+        match self {
+            FileNode::Directory(dir) => dir.parent.clone(),
+            FileNode::File(file) => file.parent.clone(),
+        }
+    }
+    fn get_children(&self) -> Vec<Rc<FileNode>> {
+        match self {
+            FileNode::Directory(dir) => dir.children.clone(),
+            FileNode::File(_) => panic!("requested children but this is a file"),
+        }
+    }
+
+    fn get_directory(&self) -> &Directory {
+        match self {
+            FileNode::Directory(dir) => dir,
+            FileNode::File(_) => panic!("requested directory but this is a file"),
+        }
+    }
+    fn get_file(&self) -> &File {
+        match self {
+            FileNode::Directory(_) => panic!("requested file but this is a directory"),
+            FileNode::File(file) => file,
         }
     }
 }
@@ -134,10 +159,20 @@ impl Directory {
     fn from(s: &'static str) -> Self {
         Self {
             name: s,
-            size: None,
             children: vec![],
             parent: None,
         }
+    }
+
+    fn get_size(&self) -> usize {
+        let mut sum = 0;
+        for child in &self.children {
+            sum += match child.deref() {
+                FileNode::Directory(dir) => dir.get_size(),
+                FileNode::File(file) => file.size,
+            }
+        }
+        sum
     }
 }
 
@@ -191,15 +226,14 @@ pub enum FileNode {
 pub struct File {
     name: &'static str,
     size: usize,
-    parent: Option<NodeId>,
+    parent: Option<Rc<FileNode>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Directory {
     name: &'static str,
-    size: Option<usize>,
-    children: Vec<NodeId>,
-    parent: Option<NodeId>,
+    children: Vec<Rc<FileNode>>,
+    parent: Option<Rc<FileNode>>,
 }
 
 pub fn print_error(error: Error) {
@@ -222,169 +256,135 @@ pub fn print_error(error: Error) {
     }
 }
 
-/// .
-///
-/// # Errors
-///
-/// This function will return an error if attempt is made to change directory into a child directory without knowing it is there.
-pub fn generate_file_structure(input: &'static str) -> Result<(Arena<FileNode>, NodeId), Error> {
-    // create a new file structure
-    let mut tree = indextree::Arena::new();
-    tree.reserve(input.lines().count()); // this will allocate too much but we want speed so its ok
-    let root_directory = Directory {
-        name: "/",
-        size: None,
-        children: vec![],
-        parent: None,
-    };
+#[derive(Clone)]
+struct Tree {
+    nodes: Vec<FileNode>,
+    current_working_directory: Option<Rc<FileNode>>,
+}
 
-    let root_id = tree.new_node(FileNode::Directory(root_directory));
-    let mut cwd_id = root_id;
+impl Tree {
+    fn new(root: Directory) -> Self {
+        let root = FileNode::Directory(root);
+        let nodes = vec![root];
 
-    for line in input.lines() {
-        let parsed_line = Line::try_from(line)?;
+        let tmp = Self {
+            nodes,
+            current_working_directory: None,
+        };
+        Self {
+            nodes: tmp.nodes.clone(),
+            current_working_directory: tmp.get_root().map(Rc::new),
+        }
+    }
 
-        match parsed_line {
-            Line::CommandOutput(new_node) => {
-                (tree, cwd_id) = add_new_node(&tree, new_node, cwd_id);
-            }
-            Line::CommandInput(command) => match command {
-                Command::Ls => (),
-                Command::Cd(target) => {
-                    match target {
-                        ChangeDir::Up => {
-                            cwd_id = match tree.get(cwd_id) {
-                                None => root_id,
-                                Some(some_parent) => match some_parent.get() {
-                                    FileNode::File(_) => unreachable!("parent is a file"),
-                                    FileNode::Directory(some_parent_directory) => {
-                                        match some_parent_directory.parent {
-                                            None => {
-                                                assert!(
-                                                    cwd_id == root_id,
-                                                    "only root can have no parents"
-                                                );
-                                                root_id
-                                            }
-                                            Some(some_parent_id) => some_parent_id,
-                                        }
-                                    }
-                                },
-                            }
-                        }
-                        ChangeDir::Root => cwd_id = root_id,
-                        ChangeDir::Dir(target_name) => {
-                            let mut found = false;
-                            for child_id in cwd_id.children(&tree) {
-                                match tree.get(child_id) {
-                                    None => unreachable!("tree does not have child_id"),
-                                    Some(child) => {
-                                        if child.get().get_name() == target_name {
-                                            cwd_id = child_id;
-                                            found = true;
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
+    fn get_root(self) -> Option<FileNode> {
+        self.nodes.first().cloned()
+    }
 
-                            if !found {
-                                return Err(Error::DirectoryNotFound); // child not found
-                            }
+    fn add_child(&mut self, file_node: FileNode) {
+        // add node to the list, link parent and children together
+        let file_node = match file_node {
+            FileNode::Directory(dir) => FileNode::Directory(Directory {
+                name: dir.name,
+                children: dir.children,
+                parent: Some(self.current_working_directory.as_ref().unwrap().clone()),
+            }),
+            FileNode::File(file) => FileNode::File(File {
+                name: file.name,
+                size: file.size,
+                parent: Some(self.current_working_directory.as_ref().unwrap().clone()),
+            }),
+        };
+
+        self.nodes.push(file_node);
+    }
+
+    fn change_working_directory(self, target: ChangeDir) -> Self {
+        let next_working_directory = match target {
+            ChangeDir::Dir(target_name) => {
+                // check if target is child in current working directory
+                let children = self
+                    .current_working_directory
+                    .clone()
+                    .unwrap()
+                    .get_children();
+                let target = children
+                    .iter()
+                    .find(|child| child.get_name() == target_name);
+
+                
+                match target {
+                    Some(target) => target.clone(),
+                    None => {
+                        return Self {
+                            nodes: self.nodes.clone(),
+                            current_working_directory: self.get_root().map(Rc::new),
                         }
                     }
                 }
+            }
+            ChangeDir::Up => {
+                // Check if current working directory has a parent
+                let result = match self
+                    .current_working_directory
+                    .as_ref()
+                    .unwrap()
+                    .get_parent()
+                {
+                    Some(parent) => parent,
+                    None => {
+                        return Self {
+                            nodes: self.clone().nodes,
+                            current_working_directory: self
+                                .get_root()
+                                .map(Rc::new),
+                        }
+                    }
+                };
+                result
+            }
+            ChangeDir::Root => {
+                let result = self.nodes.first().cloned().unwrap();
+                Rc::new(result)
+            }
+        };
+
+        Self {
+            nodes: self.nodes,
+            current_working_directory: Some(next_working_directory),
+        }
+    }
+}
+
+fn generate_file_structure(input: &'static str) -> Result<(), Error> {
+    let mut tree = Tree::new(Directory {
+        name: "/",
+        children: vec![],
+        parent: None,
+    });
+
+    // parse lines
+    for line in input.lines() {
+        let parsed_line = Line::try_from(line)?;
+
+        tree = match parsed_line {
+            Line::CommandOutput(new_node) => {
+                tree.add_child(new_node);
+                tree
+            }
+            Line::CommandInput(command) => match command {
+                Command::Ls => tree,
+                Command::Cd(target) => tree.change_working_directory(target),
             },
         };
     }
-    print!("{:#?}", root_id.debug_pretty_print(&tree));
-    Ok((tree, root_id))
-}
 
-pub fn get_size(tree: &Arena<FileNode>, root: NodeId) -> usize {
-    let tree = tree.clone();
-    match tree.get(root).unwrap().get() {
-        FileNode::File(file) => file.size,
-        FileNode::Directory(dir) => {
-            let mut size = 0;
-            for &child in &dir.children {
-                size += get_size(&tree, child);
-            }
-            size
-        }
-    }
-}
-
-pub fn set_size(tree: Arena<FileNode>, root: NodeId) -> Arena<FileNode> {
-    // because of shitty borrow checker we cannot just read a value from an object
-    // and act upon it. We need to clone the entire tree structure and read
-    // whatever we're interested in and then we can modify create a new copy
-    // from scratch. This will result in N copies just here.
-    let mut new_tree = tree.clone();
-    for child in root.children(&tree) {
-        // for each directory, set new size in new tree
-        match new_tree.get_mut(child).unwrap().get_mut() {
-            FileNode::File(_) => (),
-            FileNode::Directory(dir) => {
-                dir.size = Some(get_size(&tree.clone(), child));
-            }
-        };
-    }
-    new_tree
-}
-
-/// add_new_node returns new tree and a node to current working directory
-///
-/// # Panics
-///
-/// Panics if current working directory does not exists in tree
-/// Panics if current working directory is not a directory
-fn add_new_node(
-    tree: &Arena<FileNode>,
-    mut new_node: FileNode,
-    cwd: NodeId,
-) -> (Arena<FileNode>, NodeId) {
-    // create a copy of the tree
-    let mut tmp_tree = tree.clone();
-
-    //  set parent
-    new_node.set_parent(cwd);
-    let new_node_id = tmp_tree.new_node(new_node);
-
-    // get current working directory and add the newly created node to it
-    let tmp_tree = tmp_tree.clone();
-    let current_working_directory = match tmp_tree.get(cwd) {
-        None => panic!("cannot find current working directory by id in tree"),
-        Some(current_working_directory) => current_working_directory,
-    };
-    let mut current_working_directory = match current_working_directory.get() {
-        FileNode::File(_) => {
-            panic!("current working directory is not a directory but a file")
-        }
-        FileNode::Directory(current_working_directory) => current_working_directory,
-    }
-    .clone();
-    current_working_directory.children.push(new_node_id);
-
-    // let cwd know the id of the new node
-    let mut tmp_tree = tmp_tree.clone();
-    cwd.append(new_node_id, &mut tmp_tree);
-
-    // set children
-    match tmp_tree.get_mut(cwd) {
-        None => unreachable!("cwd is empty"),
-        Some(directory) => match directory.get_mut() {
-            FileNode::File(_) => unreachable!("cwd is a file not a directory"),
-            FileNode::Directory(dir) => dir.children.push(new_node_id),
-        },
-    }
-
-    // return modified tree
-    (tmp_tree, cwd)
+    todo!()
 }
 
 #[cfg(test)]
 mod tests {
+    use super::ChangeDir;
 
     const INPUT: &str = include_str!("../puzzle_input/day_7.txt");
     const EXAMPLE_INPUT: [&str; 2] = [
@@ -420,6 +420,13 @@ $ ls
     #[test]
     #[ignore]
     fn example() {
+        let what_is_this = ChangeDir::try_from("asdasd");
+
+        let dir = match what_is_this {
+            Ok(dir) => dir,
+            Err(_) => unreachable!(""),
+        };
+
         for (input, expected) in EXAMPLE_INPUT.iter().zip(EXAMPLE_ANSWER.iter()) {
             // assert_eq!(generate_file_structure(input), expected[0]);
             // assert_eq!(todo(input), expected[1]);
