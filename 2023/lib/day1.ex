@@ -16,4 +16,8 @@ defmodule Day1 do
     :world
   end
 
+  def read_file do
+    File.read("puzzle_input/day_1_test.txt")
+  end
+
 end
