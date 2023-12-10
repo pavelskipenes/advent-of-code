@@ -3,11 +3,11 @@ defmodule Day1 do
 
   def solver_part1(input) when is_binary(input) do
     String.split(input, "\n")
-    |> Enum.map(fn line -> convert_number(line) end)
+    |> Enum.map(&convert_number/1)
     |> Enum.reduce(0, fn (element, accumulator) -> accumulator + element end)
   end
 
-  def convert_number(line) when is_binary(line) do
+  defp convert_number(line) when is_binary(line) do
     line
     |> String.to_charlist
     |> Enum.filter(&is_ascii_number/1)
