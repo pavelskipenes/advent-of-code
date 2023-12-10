@@ -1,23 +1,34 @@
 defmodule Day1 do
-  @moduledoc """
-  Documentation for `Day1`.
-  """
+  use ExUnit.Case
 
-  @doc """
-  Hello world.
-
-  ## Examples
-
-      iex> Day1.hello()
-      :world
-
-  """
-  def hello do
-    :world
+  def solver_part1(input) when is_binary(input) do
+    String.split(input, "\n")
+    |> Enum.map(fn line -> convert_number(line) end)
+    |> Enum.reduce(0, fn (element, accumulator) -> accumulator + element end)
   end
 
-  def read_file do
-    File.read("puzzle_input/day_1_test.txt")
+  def convert_number(line) when is_binary(line) do
+    line
+    |> String.to_charlist
+    |> Enum.filter(&is_ascii_number/1)
+    |> first_and_last 
+    |> List.to_string
+    |> String.to_integer
   end
 
+  defp is_ascii_number(char) when char in ?0..?9 do
+    true
+  end 
+
+  defp is_ascii_number(_char) do
+    false
+  end 
+
+  defp first_and_last(list) when is_list(list) and length(list) >= 1 do
+    [List.first(list) , List.last(list)]
+  end
+
+  defp first_and_last(list) when is_list(list) and length(list) == 0 do
+    [?0]
+  end
 end
