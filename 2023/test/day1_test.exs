@@ -13,4 +13,17 @@ defmodule Day1Test do
     |> Day1.solver_part1
   end
 
+  test "number matching" do
+    assert Day1.string_to_number("one") == 1
+    assert Day1.string_to_number("two") == 2
+    assert Day1.string_to_number("three") == 3
+    assert Day1.string_to_number("four") == 4
+    assert Day1.string_to_number("five") == 5
+    assert Day1.string_to_number("six") == 6
+    assert Day1.string_to_number("seven") == 7
+    assert Day1.string_to_number("eight") == 8
+    assert Day1.string_to_number("nine") == 9
+    assert Day1.string_to_number("zero") == 0
+  end
+
 end

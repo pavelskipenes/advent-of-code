@@ -16,6 +16,22 @@ defmodule Day1 do
     |> String.to_integer
   end
 
+  def string_to_number(string) do
+    case string do
+      "one" -> 1
+      "two" -> 2
+      "three" -> 3
+      "four" -> 4
+      "five" -> 5
+      "six" -> 6
+      "seven" -> 7
+      "eight" -> 8
+      "nine" -> 9
+      "zero" -> 0
+      _ -> :no_match
+    end
+  end
+
   defp is_ascii_number(char) when char in ?0..?9 do
     true
   end 
