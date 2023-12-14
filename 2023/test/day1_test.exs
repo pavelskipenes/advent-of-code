@@ -1,6 +1,5 @@
 defmodule Day1Test do
   use ExUnit.Case
-  doctest Day1
 
   test "to_integer" do
     assert 1 == Day1.to_integer([1])
@@ -9,14 +8,13 @@ defmodule Day1Test do
   end
 
   test "part 1 test" do
-    {result, file_content} = File.read("puzzle_input/day_1/part1_test.txt")
-    assert result == :ok
-    assert 142 == Day1.Part1.solve(file_content)
+    assert 142 == AdventOfCode.get_puzzle_test(1,1)
+    |> Day1.Part1.solve
   end
 
   test "part 1 prod" do
     assert 55208 ==
-      File.read!("puzzle_input/day_1/input.txt")
+      AdventOfCode.get_puzzle(1)
       |> Day1.Part1.solve()
   end
 
@@ -56,13 +54,13 @@ defmodule Day1Test do
 
   test "part 2 test" do
     assert 281 ==
-      File.read!("puzzle_input/day_1/part2_test.txt")
+      AdventOfCode.get_puzzle_test(1,2)
       |> Day1.Part2.solve()
   end
 
   test "part 2 prod" do
    value =
-      File.read!("puzzle_input/day_1/input.txt")
+      AdventOfCode.get_puzzle(1)
       |> Day1.Part2.solve()
 
     assert value > 54558 # characters cannot be shared

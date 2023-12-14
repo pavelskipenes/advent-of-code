@@ -1,5 +1,4 @@
 defmodule Day1 do
-  use ExUnit.Case
 
   def first_and_last(list) when is_list(list) do
     [List.first(list), List.last(list)]
@@ -91,7 +90,5 @@ defmodule Day1 do
         [_ | rest]                                -> extract_numbers_shared(rest)
       end
     end
-
   end
-
 end
