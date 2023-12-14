@@ -47,17 +47,50 @@ defmodule Day1 do
       |> Enum.sum
     end
 
-    # this solver walkes the line and will either discard one character at a time or multiple if they match an expected value. If the input has overlapping values like "oneight" then it will only find "one" and the remainder will be "ight" which will not match "eight"
     def line_solver(line) do
       line
-      |> String.graphemes()
-      |> extract_numbers
+      |> String.to_charlist
+      |> extract_numbers2
       |> Day1.first_and_last
-      |> Enum.map(fn string -> Integer.parse(string) end)
-      |> Enum.map(fn result -> {value, _} = result; value end)
       |> Day1.to_integer
     end
 
+    # this extractor looks at a window of 1-5 characters and looks for predefined character patterns
+    # once the pattern is found characters that contributed to the match will be removed and not available to future matches.
+    def extract_numbers1(characters) when is_list(characters) do
+      case characters do
+        []                                        -> []
+        [number    | rest] when number in ?1..?9  -> [number - 0x30 | extract_numbers1(rest)]
+        ~c"one"   ++ rest                        -> [1 | extract_numbers1(rest)]
+        ~c"two"   ++ rest                        -> [2 | extract_numbers1(rest)]
+        ~c"three" ++ rest                        -> [3 | extract_numbers1(rest)]
+        ~c"four"  ++ rest                        -> [4 | extract_numbers1(rest)]
+        ~c"five"  ++ rest                        -> [5 | extract_numbers1(rest)]
+        ~c"six"   ++ rest                        -> [6 | extract_numbers1(rest)]
+        ~c"seven" ++ rest                        -> [7 | extract_numbers1(rest)]
+        ~c"eight" ++ rest                        -> [8 | extract_numbers1(rest)]
+        ~c"nine"  ++ rest                        -> [9 | extract_numbers1(rest)]
+        [_         | rest]                        -> extract_numbers1(rest)
+      end
+    end
+
+    # hacky wonky consume at most one character at a time in stead
+    def extract_numbers2(characters) when is_list(characters) do
+      case characters do
+        []                                        -> []
+        [number    | rest] when number in ?1..?9  -> [number - 0x30 | extract_numbers2(rest)]
+        ~c"one"   ++ rest                         -> [1 | extract_numbers2(~c"ne" ++ rest)]
+        ~c"two"   ++ rest                         -> [2 | extract_numbers2(~c"wo" ++ rest)]
+        ~c"three" ++ rest                         -> [3 | extract_numbers2(~c"hree" ++ rest)]
+        ~c"four"  ++ rest                         -> [4 | extract_numbers2(~c"our" ++ rest)]
+        ~c"five"  ++ rest                         -> [5 | extract_numbers2(~c"ive" ++ rest)]
+        ~c"six"   ++ rest                         -> [6 | extract_numbers2(~c"ix" ++ rest)]
+        ~c"seven" ++ rest                         -> [7 | extract_numbers2(~c"even" ++ rest)]
+        ~c"eight" ++ rest                         -> [8 | extract_numbers2(~c"ight" ++ rest)]
+        ~c"nine"  ++ rest                         -> [9 | extract_numbers2(~c"ine" ++ rest)]
+        [_ | rest]                                -> extract_numbers2(rest)
+      end
+    end
 
     def string_to_number(string) when is_binary(string) do
       case string do
@@ -128,32 +161,6 @@ defmodule Day1 do
       |> Enum.map(&string_to_number/1)
     end
 
-    def extract_numbers(graphemes) when is_list(graphemes) do
-      case graphemes do
-        [] -> []
-        [number | rest] when number in ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"] -> [number | extract_numbers(rest)]
-        ["o", "n", "e" | rest] ->
-          ["1" | extract_numbers(rest)]
-        ["t", "w", "o" | rest] ->
-          ["2" | extract_numbers(rest)]
-        ["t", "h", "r", "e", "e" | rest] ->
-          ["3" | extract_numbers(rest)]
-        ["f", "o", "u", "r" | rest] ->
-          ["4" | extract_numbers(rest)]
-        ["f", "i", "v", "e" | rest] ->
-          ["5" | extract_numbers(rest)]
-        ["s", "i", "x" | rest] ->
-          ["6" | extract_numbers(rest)]
-        ["s", "e", "v", "e", "n" | rest] ->
-          ["7" | extract_numbers(rest)]
-        ["e", "i", "g", "h", "t" | rest] ->
-          ["8" | extract_numbers(rest)]
-        ["n", "i", "n", "e" | rest] ->
-          ["9" | extract_numbers(rest)]
-        [_ | rest] ->
-          extract_numbers(rest)
-      end
-    end
 
   end
 

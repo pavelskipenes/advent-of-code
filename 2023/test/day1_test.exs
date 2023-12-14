@@ -42,42 +42,51 @@ defmodule Day1Test do
     assert 123 == Day1.to_integer([1, 2, 3])
   end
 
-  test "extract numbers" do
-    value = "123"
-      |> String.graphemes
-      |> Day1.Part2.extract_numbers
-      |> Enum.map(fn number -> Integer.parse(number) end)
-      |> Enum.map(fn {val, ""} -> val end)
+  test "extract numbers 1" do
+    value = ~c"123"
+      |> Day1.Part2.extract_numbers1
       |> Day1.to_integer
     assert value == 123
-    value = "one"
-      |> String.graphemes
-      |> Day1.Part2.extract_numbers
+
+    value = ~c"one"
+      |> Day1.Part2.extract_numbers1
       |> IO.inspect
-      |> Enum.map(fn number -> Integer.parse(number) end)
-      |> Enum.map(fn {val, ""} -> val end)
       |> Day1.to_integer
     assert value == 1
 
-    value = "2oneightg"
-      |> String.graphemes()
-      |> Day1.Part2.extract_numbers
-      |> IO.inspect
-      |> Enum.map(fn number -> Integer.parse(number) end)
-      |> Enum.map(fn {val, ""} -> val end)
+    value = ~c"2oneight"
+      |> Day1.Part2.extract_numbers1
       |> Day1.to_integer
-    assert value == ["2", "1", "8"]
+    assert value == 218
   end
 
-  # test "part 2 test input" do
-  #   assert 281 ==
-  #            File.read!("puzzle_input/day_1/part2_test.txt")
-  #            |> Day1.Part2.solve()
-  # end
-  #
-  # test "part 2 prod input" do
-  #   assert 54558 <
-  #            File.read!("puzzle_input/day_1/input.txt")
-  #            |> Day1.Part2.solve()
-  # end
+  test "extract numbers 2" do
+    value = ~c"123"
+      |> Day1.Part2.extract_numbers2
+      |> Day1.to_integer
+    assert value == 123
+
+    value = ~c"one"
+      |> Day1.Part2.extract_numbers2
+      |> Day1.to_integer
+    assert value == 1
+
+    value = ~c"2oneight"
+      |> Day1.Part2.extract_numbers2
+      |> Day1.to_integer
+    assert value == 218
+  end
+
+  test "part 2 test input" do
+    assert 281 ==
+      File.read!("puzzle_input/day_1/part2_test.txt")
+      |> Day1.Part2.solve()
+  end
+
+  test "part 2 prod input" do
+    assert 54558 <
+      File.read!("puzzle_input/day_1/input.txt")
+      |> Day1.Part2.solve()
+      |> IO.inspect
+  end
 end
