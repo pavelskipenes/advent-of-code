@@ -2,91 +2,70 @@ defmodule Day1Test do
   use ExUnit.Case
   doctest Day1
 
-  test "test puzzle one" do
-    {result, file_content} = File.read("puzzle_input/day_1/part1_test.txt")
-    assert result == :ok
-    assert 142 == Day1.Part1.solve(file_content)
-  end
-
-  test "problem 1" do
-    assert 55208 ==
-      File.read!("puzzle_input/day_1/input.txt")
-      |> Day1.Part1.solve()
-  end
-
-  test "number matching" do
-    assert Day1.Part2.string_to_number("one") == {:ok, 1}
-    assert Day1.Part2.string_to_number("two") == {:ok, 2}
-    assert Day1.Part2.string_to_number("three") == {:ok, 3}
-    assert Day1.Part2.string_to_number("four") == {:ok, 4}
-    assert Day1.Part2.string_to_number("five") == {:ok, 5}
-    assert Day1.Part2.string_to_number("six") == {:ok, 6}
-    assert Day1.Part2.string_to_number("seven") == {:ok, 7}
-    assert Day1.Part2.string_to_number("eight") == {:ok, 8}
-    assert Day1.Part2.string_to_number("nine") == {:ok, 9}
-  end
-
-  test "windows size" do
-    assert 0..1 == Day1.Part2.windows_slice_indexies([1, 2], 1)
-    assert 0..0 == Day1.Part2.windows_slice_indexies([1, 2], 2)
-    assert 0..4 == Day1.Part2.windows_slice_indexies([1, 2, 3, 4, 5, 6], 2)
-  end
-
-  test "windows" do
-    [[1, 2], [2, 3], [3, 4], [4, 5], [5, 6]] = Day1.Part2.windows([1, 2, 3, 4, 5, 6], 2)
-  end
-
   test "to_integer" do
     assert 1 == Day1.to_integer([1])
     assert 12 == Day1.to_integer([1, 2])
     assert 123 == Day1.to_integer([1, 2, 3])
   end
 
-  test "extract numbers 1" do
-    value = ~c"123"
-      |> Day1.Part2.extract_numbers1
-      |> Day1.to_integer
-    assert value == 123
+  test "part 1 test" do
+    {result, file_content} = File.read("puzzle_input/day_1/part1_test.txt")
+    assert result == :ok
+    assert 142 == Day1.Part1.solve(file_content)
+  end
 
-    value = ~c"one"
-      |> Day1.Part2.extract_numbers1
-      |> IO.inspect
+  test "part 1 prod" do
+    assert 55208 ==
+      File.read!("puzzle_input/day_1/input.txt")
+      |> Day1.Part1.solve()
+  end
+
+  test "extract numbers 1" do
+    value = ~c"123_456_789"
+      |> Day1.Part2.extract_numbers
+      |> Day1.to_integer
+    assert value == 123_456_789
+
+    value = ~c"one_two_three_four_five_six_seven_eight_nine"
+      |> Day1.Part2.extract_numbers
+      |> Day1.to_integer
+    assert value == 123_456_789
+
+    value = ~c"oneight"
+      |> Day1.Part2.extract_numbers
       |> Day1.to_integer
     assert value == 1
-
-    value = ~c"2oneight"
-      |> Day1.Part2.extract_numbers1
-      |> Day1.to_integer
-    assert value == 218
   end
 
   test "extract numbers 2" do
-    value = ~c"123"
-      |> Day1.Part2.extract_numbers2
+    value = ~c"123456789"
+      |> Day1.Part2.extract_numbers_shared
       |> Day1.to_integer
-    assert value == 123
+    assert value == 123_456_789
 
-    value = ~c"one"
-      |> Day1.Part2.extract_numbers2
+    value = ~c"one_two_three_four_five_six_seven_eight_nine"
+      |> Day1.Part2.extract_numbers_shared
       |> Day1.to_integer
-    assert value == 1
+    assert value == 123_456_789
 
-    value = ~c"2oneight"
-      |> Day1.Part2.extract_numbers2
+    value = ~c"oneight"
+      |> Day1.Part2.extract_numbers_shared
       |> Day1.to_integer
-    assert value == 218
+    assert value == 18
   end
 
-  test "part 2 test input" do
+  test "part 2 test" do
     assert 281 ==
       File.read!("puzzle_input/day_1/part2_test.txt")
       |> Day1.Part2.solve()
   end
 
-  test "part 2 prod input" do
-    assert 54558 <
+  test "part 2 prod" do
+   value =
       File.read!("puzzle_input/day_1/input.txt")
       |> Day1.Part2.solve()
-      |> IO.inspect
+
+    assert value > 54558 # characters cannot be shared
+    assert value == 54578 # characters can be shared
   end
 end
