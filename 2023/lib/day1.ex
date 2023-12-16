@@ -15,6 +15,7 @@ defmodule Day1 do
     case list do
       [] -> 0
       [head | tail] when is_integer(head) -> head * :math.pow(10, power) + to_integer(tail, power + 1)
+      [head | tail] when is_binary(head) -> {head, _} = Integer.parse(head); head * :math.pow(10, power) + to_integer(tail, power + 1)
     end
   end
 

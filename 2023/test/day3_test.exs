@@ -1,12 +1,24 @@
 defmodule Day3Test do
   use ExUnit.Case
 
-  test "test symbol extraction" do
-    assert [3] == Day3.Part1.extract_symbols("...*......\n")
-    assert [3] == Day3.Part1.extract_symbols("...$......\n")
-    assert [6, 3] == Day3.Part1.extract_symbols("...*..$...\n")
-    assert [7, 3] == Day3.Part1.extract_symbols("...*...+..\n")
-    assert [] == Day3.Part1.extract_symbols("..........\n")
+  test "parse shit" do
+    {symbols, numbers} = AdventOfCode.get_puzzle_test(3, 1)
+      |> Day3.Part1.parse_shit
+
+    assert symbols |> Enum.reverse == [{1, 3}, {3, 6}, {4, 3}, {5, 5}, {8, 3}, {8, 5}]
+
+    assert numbers |> Enum.reverse == [
+      {{0, 0}, 467},
+      {{0, 5}, 114},
+      {{2, 2}, 35},
+      {{2, 6}, 633},
+      {{4, 0}, 617},
+      {{5, 7}, 58},
+      {{6, 2}, 592},
+      {{7, 6}, 755},
+      {{9, 1}, 664},
+      {{9, 5}, 598}
+    ]
   end
 
   test "part 1 test" do
